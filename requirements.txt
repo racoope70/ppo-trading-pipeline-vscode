@@ -1,5 +1,7 @@
 numpy
 pandas
+python-dotenv
+alpaca-py
 matplotlib
 scikit-learn
 joblib
