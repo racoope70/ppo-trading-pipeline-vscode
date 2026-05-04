@@ -1,0 +1,79 @@
+# Python cache/build files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment variables / secrets
+.env
+*.env
+.env.*
+!.env.example
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Local logs
+logs/
+*.log
+
+# Data files generated locally
+data/raw/
+data/processed/
+*.csv
+*.parquet
+*.pkl
+
+# Model artifacts
+models/
+trained_models/
+archived_colab_trained_models/
+
+# Reports and generated outputs
+reports/
+*.png
+*.jpg
+*.jpeg
+*.pdf
+
+# QuantConnect generated/local state
+QuantConnect_Ready/
+live_signals.json
+gist_metadata.json
+live_signals_gist_id.txt
+
+# Large ML/RL artifacts
+*.zip
+*.pt
+*.pth
+*.onnx
+*.joblib
+*.h5
+*.keras
+
+# Keep folder structure if you add .gitkeep files
+!data/.gitkeep
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!models/.gitkeep
+!reports/.gitkeep
+!logs/.gitkeep
