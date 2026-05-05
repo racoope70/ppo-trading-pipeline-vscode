@@ -234,13 +234,6 @@ def choose_latest_prefix(
     """
     return choose_best_prefix(symbol=symbol, model_dir=model_dir)
 
-    logging.warning(
-        "No usable model_info.json metadata found for %s. Falling back to latest window.",
-        symbol,
-    )
-
-    return sorted(prefixes, key=window_number)[-1]
-
 
 def fetch_latest_raw_data(
     symbol: str,
