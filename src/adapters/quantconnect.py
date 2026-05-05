@@ -43,7 +43,7 @@ def utc_now() -> datetime:
 
 def build_quantconnect_payload(
     predictions: list[dict[str, Any]],
-    valid_minutes: int = 90,
+    valid_minutes: int = 1440,
     interval: str = "1h",
     producer: str = "ppo_research_pipeline",
 ) -> dict[str, Any]:
@@ -184,7 +184,7 @@ def publish_json_to_gist(
 
 def export_quantconnect_signals(
     symbols: list[str] | None = None,
-    valid_minutes: int = 90,
+    valid_minutes: int = 1440,
     interval: str = "1h",
     publish_gist: bool = False,
     output_dir: Path | None = None,
@@ -257,7 +257,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--valid-minutes",
         type=int,
-        default=90,
+        default=1440,
         help="How long the signal JSON should be considered fresh.",
     )
 

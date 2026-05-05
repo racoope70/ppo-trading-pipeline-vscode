@@ -86,14 +86,17 @@ def choose_best_prefix(
     model_dir: Path = FINAL_MODEL_DIR,
     min_sharpe: float | None = None,
     max_drawdown_pct: float | None = None,
+    min_final_portfolio: float | None = None,
+    prefer_winner_ppo: bool = True,
 ) -> str:
     """Choose the best available model prefix for a symbol using model metadata.
 
     Selection priority:
         1. Prefer complete artifact sets with readable model_info.json.
-        2. Rank by Sharpe.
-        3. Use final_portfolio as a tie-breaker.
-        4. Fall back to highest window number if metadata is missing.
+        2. Optionally filter by Sharpe, drawdown, and final portfolio.
+        3. If prefer_winner_ppo=True, prefer windows where Winner == PPO.
+        4. Rank by Sharpe, final portfolio, and window number.
+        5. Fall back to highest window number if metadata is missing.
     """
     prefixes = [
         prefix
@@ -129,8 +132,10 @@ def choose_best_prefix(
 
             sharpe = float(info.get("sharpe", float("-inf")))
             final_portfolio = float(info.get("final_portfolio", 0.0))
-            drawdown = info.get("drawdown_pct", info.get("drawdown_%", None))
+            buy_hold = float(info.get("buy_hold", 0.0))
+            winner = str(info.get("winner", "")).strip()
 
+            drawdown = info.get("drawdown_pct", info.get("drawdown_%", None))
             if drawdown is not None:
                 drawdown = float(drawdown)
 
@@ -144,12 +149,23 @@ def choose_best_prefix(
             ):
                 continue
 
+            if (
+                min_final_portfolio is not None
+                and final_portfolio < min_final_portfolio
+            ):
+                continue
+
+            is_winner_ppo = winner.upper() == "PPO"
+
             candidates.append(
                 {
                     "prefix": prefix,
                     "sharpe": sharpe,
                     "final_portfolio": final_portfolio,
+                    "buy_hold": buy_hold,
                     "drawdown": drawdown,
+                    "winner": winner,
+                    "is_winner_ppo": is_winner_ppo,
                     "window": window_number(prefix),
                 }
             )
@@ -158,8 +174,24 @@ def choose_best_prefix(
             logging.warning("Could not read model info for %s: %s", prefix, exc)
 
     if candidates:
+        ranking_pool = candidates
+
+        if prefer_winner_ppo:
+            winner_pool = [
+                item for item in candidates
+                if item["is_winner_ppo"]
+            ]
+
+            if winner_pool:
+                ranking_pool = winner_pool
+            else:
+                logging.info(
+                    "No Winner=PPO candidates found for %s. Ranking all candidates by Sharpe.",
+                    symbol,
+                )
+
         best = sorted(
-            candidates,
+            ranking_pool,
             key=lambda item: (
                 item["sharpe"],
                 item["final_portfolio"],
@@ -169,12 +201,17 @@ def choose_best_prefix(
         )[0]
 
         logging.info(
-            "Selected model for %s: %s | Sharpe=%.3f | FinalPortfolio=%.2f | Drawdown=%s",
+            (
+                "Selected model for %s: %s | Sharpe=%.3f | "
+                "FinalPortfolio=%.2f | BuyHold=%.2f | Drawdown=%s | Winner=%s"
+            ),
             symbol,
             best["prefix"],
             best["sharpe"],
             best["final_portfolio"],
+            best["buy_hold"],
             best["drawdown"],
+            best["winner"],
         )
 
         return str(best["prefix"])
