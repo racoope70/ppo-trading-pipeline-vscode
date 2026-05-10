@@ -149,3 +149,83 @@ The next research gate should not be more ticker expansion yet. The next step sh
 Recommended next step:
 
 `Run turnover, slippage, and transaction-cost sensitivity analysis for XOM, UNH, AAPL, and PFE before expanding the universe or moving toward paper-trading deployment.`
+
+---
+
+## Addendum — Turnover and Transaction-Cost Review
+
+A follow-up turnover and transaction-cost review was completed using the existing prediction files from the focused four-ticker 150k run.
+
+This review did not retrain the PPO models. It used the saved `*_predictions_compat.csv` files from the same training folder and applied simple transaction-cost stress assumptions to evaluate whether the strongest PPO windows remained favorable after estimated execution friction.
+
+Analysis script:
+
+`src/analyze_turnover_costs.py`
+
+Training run reviewed:
+
+`reports/backtests/ppo_walkforward_results_20260509_172626`
+
+Generated local output:
+
+`reports/backtests/ppo_walkforward_results_20260509_172626/turnover_cost_analysis.csv`
+
+The generated CSV was kept as local output and was not committed to GitHub.
+
+## Cost Review Method
+
+The review applied three simple transaction-cost assumptions:
+
+| Cost Assumption | Interpretation |
+|---:|---|
+| 1 bps | Light transaction-cost stress |
+| 5 bps | Moderate transaction-cost stress |
+| 10 bps | Harsh transaction-cost stress |
+
+The analysis estimated cost-adjusted portfolio values using action turnover from the saved prediction files. This is not a full execution simulator. It is a first-pass stress test to identify whether the candidate models are obviously too active to trust without deeper execution modeling.
+
+## Cost-Adjusted Findings
+
+At the 5 bps moderate cost level, all four symbols still had at least one PPO-favorable window.
+
+| Symbol | Best Window After 5 bps | Sharpe | Original PPO Portfolio | Buy & Hold | Cost-Adjusted Portfolio at 5 bps | Cost-Adjusted Edge at 5 bps | Result |
+|---|---|---:|---:|---:|---:|---:|---|
+| UNH | 0-3500 | 0.735 | 178,521.03 | 65,254.99 | 171,177.68 | 105,922.69 | PPO |
+| XOM | 500-4000 | 0.637 | 184,988.37 | 102,273.24 | 172,195.46 | 69,922.22 | PPO |
+| AAPL | 0-3500 | 0.551 | 152,004.43 | 104,585.49 | 127,753.17 | 23,167.68 | PPO |
+| PFE | 0-3500 | 0.070 | 100,571.61 | 68,060.62 | 88,535.50 | 20,474.88 | PPO |
+
+The cost review strengthened the case for UNH and XOM. Both retained large cost-adjusted edges after the 5 bps stress test.
+
+AAPL remained positive at 5 bps, but it weakened materially under the harsher 10 bps stress test. This means AAPL should be treated as more execution-sensitive than XOM or UNH.
+
+PFE remained favorable in selected windows, but its low Sharpe and lower return profile make it more of a defensive candidate than a primary active candidate.
+
+## Updated Interpretation
+
+The turnover review changed the interpretation of the 150k run in an important way.
+
+The raw signal counts showed frequent BUY and SELL labels, especially for XOM and AAPL. However, the action-turnover estimate classified the selected windows as lower pressure than the raw signal counts initially suggested. This means the models may be producing many directional labels, but the action magnitude does not always imply extreme portfolio turnover.
+
+That said, this should not be treated as final proof of tradability. The current cost model is simplified and does not include spread, market impact, partial fills, latency, or broker-specific execution behavior.
+
+## Updated Candidate Ranking
+
+After the turnover and cost review, the focused candidate ranking is:
+
+| Rank | Symbol | Updated Assessment |
+|---:|---|---|
+| 1 | UNH | Strongest cost-adjusted result; highest Sharpe, but drawdown still needs review |
+| 2 | XOM | Most consistent candidate across windows; strong cost-adjusted edge |
+| 3 | AAPL | Strong but execution-sensitive; weakens under harsher cost assumptions |
+| 4 | PFE | Defensive candidate; low drawdown but lower return and weaker Sharpe |
+
+## Updated Research Conclusion
+
+The focused four-ticker 150k run survived the first-pass turnover and transaction-cost review better than expected. At the 5 bps cost level, each symbol retained at least one PPO-favorable window.
+
+The next research gate should be a deeper execution realism test rather than immediate universe expansion.
+
+Recommended next step:
+
+`Build or run a fuller execution-cost backtest that includes slippage, spread assumptions, turnover, position sizing, and trade-level PnL attribution for XOM, UNH, AAPL, and PFE.`
