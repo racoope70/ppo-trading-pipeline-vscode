@@ -176,23 +176,91 @@ def prepare_prediction_frame(file_path: Path) -> pd.DataFrame:
     return working
 
 
-def choose_best_lead_prefixes(summary: pd.DataFrame) -> pd.DataFrame:
-    """Choose best UNH and XOM windows based on moderate execution logic.
+def choose_best_lead_prefixes(summary: pd.DataFrame, run_dir: Path) -> pd.DataFrame:
+    """Choose best UNH and XOM windows.
 
-    The previous execution-realism review identified:
-    - UNH window 0-3500
-    - XOM window 500-4000
+    Preferred rule:
+    If execution_realism_analysis.csv exists, choose the best moderate-scenario
+    window per lead symbol ranked by Execution_Edge_vs_BuyHold.
 
-    This function keeps that selection dynamic by ranking lead symbols by
-    PPO winner first, then Sharpe, then PPO portfolio.
+    Fallback rule:
+    If the execution-realism file does not exist, choose PPO winners first,
+    then rank by raw Sharpe and PPO portfolio.
     """
     lead = summary[summary["Ticker"].isin(LEAD_SYMBOLS)].copy()
 
     if lead.empty:
         raise ValueError(f"No lead symbols found in summary: {LEAD_SYMBOLS}")
 
-    # Keep PPO winners first.
-    lead["ppo_winner_flag"] = lead["Winner"].astype(str).str.upper().eq("PPO").astype(int)
+    execution_path = run_dir / "execution_realism_analysis.csv"
+
+    if execution_path.exists():
+        execution = pd.read_csv(execution_path)
+
+        required_execution_cols = {
+            "Ticker",
+            "Scenario",
+            "Prefix",
+            "Execution_Edge_vs_BuyHold",
+        }
+        missing_execution_cols = required_execution_cols - set(execution.columns)
+
+        if missing_execution_cols:
+            raise ValueError(
+                "execution_realism_analysis.csv is missing required columns: "
+                f"{sorted(missing_execution_cols)}"
+            )
+
+        moderate = execution[
+            (execution["Ticker"].isin(LEAD_SYMBOLS))
+            & (execution["Scenario"].astype(str).str.lower().eq("moderate"))
+        ].copy()
+
+        if not moderate.empty:
+            best_execution = (
+                moderate.sort_values(
+                    ["Ticker", "Execution_Edge_vs_BuyHold"],
+                    ascending=[True, False],
+                )
+                .groupby("Ticker")
+                .head(1)
+                .copy()
+            )
+
+            selected = lead.merge(
+                best_execution[["Prefix", "Execution_Edge_vs_BuyHold"]],
+                how="inner",
+                left_on="prefix",
+                right_on="Prefix",
+            )
+
+            if not selected.empty:
+                print(
+                    "\nSelection rule: using execution_realism_analysis.csv "
+                    "moderate scenario ranked by Execution_Edge_vs_BuyHold."
+                )
+                print(
+                    selected[
+                        [
+                            "Ticker",
+                            "Window",
+                            "prefix",
+                            "Execution_Edge_vs_BuyHold",
+                        ]
+                    ].to_string(index=False)
+                )
+
+                return selected
+
+        print(
+            "\nWARNING: execution_realism_analysis.csv exists, but no usable "
+            "moderate lead-symbol rows were found. Falling back to raw summary ranking."
+        )
+
+    # Fallback: keep PPO winners first, then rank by Sharpe and PPO portfolio.
+    lead["ppo_winner_flag"] = (
+        lead["Winner"].astype(str).str.upper().eq("PPO").astype(int)
+    )
 
     selected = (
         lead.sort_values(
@@ -202,6 +270,22 @@ def choose_best_lead_prefixes(summary: pd.DataFrame) -> pd.DataFrame:
         .groupby("Ticker")
         .head(1)
         .copy()
+    )
+
+    print(
+        "\nSelection rule: fallback using PPO winner, raw Sharpe, and PPO portfolio."
+    )
+    print(
+        selected[
+            [
+                "Ticker",
+                "Window",
+                "prefix",
+                "Sharpe",
+                "PPO_Portfolio",
+                "Winner",
+            ]
+        ].to_string(index=False)
     )
 
     return selected
@@ -411,7 +495,7 @@ def main() -> None:
     print("Lead symbols:", LEAD_SYMBOLS)
     print("Total cost bps:", TOTAL_COST_BPS)
 
-    selected = choose_best_lead_prefixes(summary)
+    selected = choose_best_lead_prefixes(summary, run_dir)
 
     summary_frames = []
     equity_frames = []
