@@ -209,23 +209,76 @@ The raw signal counts showed frequent BUY and SELL labels, especially for XOM an
 
 That said, this should not be treated as final proof of tradability. The current cost model is simplified and does not include spread, market impact, partial fills, latency, or broker-specific execution behavior.
 
+## Addendum — Execution Realism Review
+
+A second follow-up review was completed after the turnover and transaction-cost screen. This review used the saved prediction files from the same focused four-ticker 150k run and simulated a simple target-position equity curve from the PPO `Action` column.
+
+This review did not retrain the PPO models. It was designed to answer a stricter question:
+
+`Do the strongest PPO windows still look favorable after position changes, notional turnover, slippage, spread assumptions, and cost-adjusted drawdown are considered?`
+
+Analysis script:
+
+`src/analyze_execution_realism.py`
+
+Training run reviewed:
+
+`reports/backtests/ppo_walkforward_results_20260509_172626`
+
+Generated local output:
+
+`reports/backtests/ppo_walkforward_results_20260509_172626/execution_realism_analysis.csv`
+
+The generated CSV was kept as local output and was not committed to GitHub.
+
+## Execution Review Method
+
+The execution-realism helper applied three execution-cost scenarios:
+
+| Scenario | Total Cost Assumption | Interpretation |
+|---|---:|---|
+| Light | 1.5 bps | Low-friction execution assumption |
+| Moderate | 5.0 bps | Primary review case |
+| Harsh | 10.0 bps | Stress case for execution sensitivity |
+
+The helper simulated target-weight changes from the `Action` column, applied costs to notional turnover, and estimated a cost-adjusted equity path. The resulting `Final_Equity` is not expected to match the original PPO portfolio exactly because this helper is evaluating execution realism rather than reproducing the original training backtest.
+
+## Execution-Adjusted Findings
+
+Under the moderate execution scenario, each ticker still had at least one PPO-favorable window.
+
+| Symbol | Best Window Under Moderate Scenario | Original PPO Portfolio | Buy & Hold | Execution-Adjusted Final Equity | Execution Edge vs Buy & Hold | Max Drawdown % | Estimated Sharpe | Assessment |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| UNH | 0-3500 | 178,521.03 | 65,254.99 | 172,278.60 | 107,023.61 | 12.90 | 1.661 | Strongest execution-adjusted result |
+| XOM | 500-4000 | 184,988.37 | 102,273.24 | 153,250.09 | 50,976.85 | 11.72 | 1.105 | Strong active candidate |
+| AAPL | 0-3500 | 152,004.43 | 104,585.49 | 119,625.53 | 15,040.04 | 11.37 | 0.598 | Positive but execution-sensitive |
+| PFE | 0-3500 | 100,571.61 | 68,060.62 | 89,803.80 | 21,743.18 | 10.26 | -2.986 | Relative defensive candidate, weak absolute return |
+
+UNH and XOM remained the clearest candidates after execution assumptions. Both retained meaningful execution-adjusted edges while maintaining acceptable drawdown levels relative to the other candidates.
+
+AAPL became materially more execution-sensitive. Under moderate assumptions, AAPL window 0 remained favorable, but the previously strong AAPL window 2 no longer beat Buy & Hold after execution costs. Under the harsh scenario, all AAPL windows lost to Buy & Hold.
+
+PFE remained favorable relative to Buy & Hold in selected windows, but the moderate execution-adjusted final equity stayed below the starting capital. This makes PFE more of a defensive relative-performance candidate than a primary absolute-return candidate.
+
 ## Updated Candidate Ranking
 
-After the turnover and cost review, the focused candidate ranking is:
+After the turnover, transaction-cost, and execution-realism reviews, the focused candidate ranking is:
 
 | Rank | Symbol | Updated Assessment |
 |---:|---|---|
-| 1 | UNH | Strongest cost-adjusted result; highest Sharpe, but drawdown still needs review |
-| 2 | XOM | Most consistent candidate across windows; strong cost-adjusted edge |
-| 3 | AAPL | Strong but execution-sensitive; weakens under harsher cost assumptions |
-| 4 | PFE | Defensive candidate; low drawdown but lower return and weaker Sharpe |
+| 1 | UNH | Strongest execution-adjusted result; high Sharpe, large edge vs Buy & Hold, but drawdown still needs monitoring |
+| 2 | XOM | Most consistent active candidate; strong execution-adjusted edge and better robustness than AAPL |
+| 3 | AAPL | Promising but execution-sensitive; requires stricter cost, slippage, and position-sizing controls |
+| 4 | PFE | Defensive relative-performance candidate; low raw drawdown but weak absolute-return profile after execution assumptions |
 
 ## Updated Research Conclusion
 
-The focused four-ticker 150k run survived the first-pass turnover and transaction-cost review better than expected. At the 5 bps cost level, each symbol retained at least one PPO-favorable window.
+The focused four-ticker 150k run passed the initial model-selection, turnover-cost, and execution-realism screens. The evidence now points to UNH and XOM as the strongest candidates for deeper testing.
 
-The next research gate should be a deeper execution realism test rather than immediate universe expansion.
+AAPL should remain in the research set, but only with caution because its edge deteriorates materially as execution assumptions become stricter. PFE should remain secondary unless the objective is defensive relative performance rather than absolute return.
+
+The next research gate should be a more detailed trade-level backtest or QuantConnect LEAN workflow that includes slippage, spread assumptions, position sizing, turnover, and trade-level PnL attribution.
 
 Recommended next step:
 
-`Build or run a fuller execution-cost backtest that includes slippage, spread assumptions, turnover, position sizing, and trade-level PnL attribution for XOM, UNH, AAPL, and PFE.`
+`Build a fuller execution-aware backtest for UNH and XOM first, then retest AAPL and PFE as secondary candidates.`
