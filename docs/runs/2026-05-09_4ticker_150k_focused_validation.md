@@ -279,6 +279,79 @@ AAPL should remain in the research set, but only with caution because its edge d
 
 The next research gate should be a more detailed trade-level backtest or QuantConnect LEAN workflow that includes slippage, spread assumptions, position sizing, turnover, and trade-level PnL attribution.
 
+---
+
+## Addendum — Lead Candidate Execution-Aware Backtest
+
+A focused execution-aware backtest was completed for the two lead candidates identified by the execution-realism review: UNH and XOM.
+
+This review used the saved prediction files from the same four-ticker 150k run and created a more detailed trade-level ledger, equity curve, and lead-candidate summary.
+
+Analysis script:
+
+`src/backtest_lead_candidates.py`
+
+Training run reviewed:
+
+`reports/backtests/ppo_walkforward_results_20260509_172626`
+
+Generated local outputs:
+
+`reports/backtests/ppo_walkforward_results_20260509_172626/lead_candidate_backtest_summary.csv`
+
+`reports/backtests/ppo_walkforward_results_20260509_172626/lead_candidate_equity_curve.csv`
+
+`reports/backtests/ppo_walkforward_results_20260509_172626/lead_candidate_trade_ledger.csv`
+
+The generated CSV files were kept as local outputs and were not committed to GitHub.
+
+## Lead Candidate Selection Rule
+
+The lead-candidate helper was updated to select windows using the moderate execution-realism results when `execution_realism_analysis.csv` is available.
+
+Selection rule:
+
+`Choose the best moderate-scenario window per lead symbol ranked by Execution_Edge_vs_BuyHold.`
+
+This replaced the earlier fallback behavior that ranked by raw Sharpe. The change was important because XOM window 3 had the highest raw Sharpe, but XOM window 2 had the stronger execution-adjusted result.
+
+Selected lead windows:
+
+| Symbol | Selected Window | Selected Prefix | Selection Basis |
+|---|---|---|---|
+| UNH | 0-3500 | ppo_UNH_window1 | Best moderate execution-adjusted edge |
+| XOM | 500-4000 | ppo_XOM_window2 | Best moderate execution-adjusted edge |
+
+## Lead Candidate Backtest Results
+
+Under the 5 bps execution-cost assumption, both UNH and XOM remained PPO-favorable.
+
+| Symbol | Window | Execution Final Equity | Buy & Hold | Execution Edge vs Buy & Hold | Max Drawdown % | Estimated Sharpe | Trade Count | Win Rate | Avg Holding Bars | Transaction Costs |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| UNH | 0-3500 | 172,278.60 | 65,254.99 | 107,023.61 | 12.90 | 1.661 | 188 | 53.7% | 16.45 | 7,969.68 |
+| XOM | 500-4000 | 153,250.09 | 102,273.24 | 50,976.85 | 11.72 | 1.105 | 112 | 42.0% | 30.24 | 17,330.08 |
+
+## Lead Candidate Interpretation
+
+UNH remained the strongest candidate. It showed the larger execution-adjusted edge, higher estimated Sharpe, and better win rate than XOM. Its trade count was higher, but total transaction costs were lower than XOM because its position changes were less expensive in aggregate.
+
+XOM also remained viable. It had a lower win rate than UNH, but a longer average holding period and a strong execution-adjusted edge versus Buy & Hold. The updated selection logic correctly moved XOM from window 3 to window 2 because window 2 was stronger under moderate execution assumptions.
+
+This review confirms that UNH and XOM are the only candidates ready for the next stage of testing.
+
+## Updated Research Conclusion After Lead Backtest
+
+The focused research path remains intact. UNH and XOM survived model selection, turnover-cost screening, execution-realism review, and a focused trade-ledger backtest.
+
+Current lead ranking:
+
+| Rank | Symbol | Current Assessment |
+|---:|---|---|
+| 1 | UNH | Strongest lead candidate; best execution-adjusted edge and best trade-ledger profile |
+| 2 | XOM | Viable active candidate; lower win rate but still positive after execution assumptions |
+
+AAPL and PFE should remain secondary research candidates. They should not be prioritized ahead of UNH and XOM until the lead candidates are tested in a fuller QuantConnect or LEAN workflow.
+
 Recommended next step:
 
-`Build a fuller execution-aware backtest for UNH and XOM first, then retest AAPL and PFE as secondary candidates.`
+`Build a QuantConnect/LEAN validation test for UNH and XOM using the selected PPO artifacts and the same execution assumptions used in the lead-candidate backtest.`
