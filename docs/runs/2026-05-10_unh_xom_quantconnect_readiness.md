@@ -200,3 +200,67 @@ Recommended next step:
 `Build a minimal QuantConnect/LEAN smoke test for UNH and XOM that loads the exported signal file, rejects stale signals, maps BUY/SELL/HOLD to target weights, and logs intended portfolio targets before attempting a fuller backtest.`
 
 This should be a separate file because it marks a new phase: **research validation has reached the point where LEAN integration testing is justified for UNH and XOM only**.
+
+---
+
+## Addendum — QuantConnect Smoke Test Result
+
+A minimal QuantConnect/LEAN smoke test was run for the selected lead candidates, UNH and XOM.
+
+The goal was not to evaluate profitability. The goal was to confirm that QuantConnect could parse the PPO-style signal payload, map the signals to target holdings, and submit trades inside the LEAN backtest environment.
+
+The first run initialized correctly but produced zero orders because the signal timestamps were rejected as stale. For smoke-test purposes, timestamp freshness was temporarily bypassed using:
+
+`self.bypass_stale_check = True`
+
+After bypassing stale-signal rejection, the smoke test successfully placed trades.
+
+## Smoke Test Result
+
+| Metric | Result |
+|---|---:|
+| Start equity | 100,000.00 |
+| End equity | 100,447.58 |
+| Net profit | 447.58 |
+| Total orders | 2 |
+| Holdings | 49,397.43 |
+| Fees | 2.00 |
+| Portfolio turnover | 49.29% |
+
+## Interpretation
+
+The QuantConnect smoke test passed.
+
+The result confirms that LEAN can:
+
+- add UNH and XOM as hourly equities
+- parse the embedded PPO signal payload
+- map `SELL` and `BUY` signals to target portfolio weights
+- submit holdings changes through `set_holdings`
+- generate orders and update portfolio equity
+
+This was not a real performance validation because the stale-signal check was bypassed and the test used an embedded static signal payload. However, it confirms that the basic QuantConnect execution path works.
+
+## Updated Research Status
+
+The local research pipeline and the QuantConnect smoke-test path are now aligned for the lead candidates.
+
+Current validated flow:
+
+| Step | Status |
+|---|---|
+| Local model selection | Passed |
+| Execution-adjusted selector | Passed |
+| Lead-candidate backtest | Passed |
+| QuantConnect signal export | Passed |
+| QuantConnect signal smoke test | Passed |
+
+## Next Recommended Step
+
+The next step should be an Object Store signal-ingestion test.
+
+Instead of hardcoding the signal payload inside the algorithm, upload `live_signals.json` to QuantConnect Object Store and modify the algorithm to read the JSON from Object Store at runtime.
+
+Recommended next test:
+
+`QuantConnect Object Store signal ingestion test for UNH and XOM using live_signals.json.`
