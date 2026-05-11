@@ -429,3 +429,75 @@ The next engineering step should be an Object Store model-artifact loading test.
 Recommended next test:
 
 `Upload the selected UNH and XOM PPO artifacts to QuantConnect Object Store and verify that QuantConnect can locate and read the expected model, VecNormalize, feature, model_info, and probability_config files for ppo_UNH_window1 and ppo_XOM_window2.`
+
+---
+
+## Addendum — Object Store Model Artifact Loading Test
+
+An Object Store model-artifact loading test was completed for the selected UNH and XOM PPO models.
+
+The goal was not to run PPO inference inside QuantConnect. The goal was to verify that QuantConnect could locate the selected model artifacts in Object Store and read the JSON metadata files required for later inference or deployment tests.
+
+## Object Store Structure
+
+The selected artifacts were uploaded under:
+
+`ppo_models_master/UNH/`
+
+`ppo_models_master/XOM/`
+
+Selected UNH artifact set:
+
+| Artifact | Status |
+|---|---|
+| ppo_UNH_window1_model.zip | Found |
+| ppo_UNH_window1_vecnorm.pkl | Found |
+| ppo_UNH_window1_features.json | Found and readable |
+| ppo_UNH_window1_model_info.json | Found and readable |
+| ppo_UNH_window1_probability_config.json | Found and readable |
+
+Selected XOM artifact set:
+
+| Artifact | Status |
+|---|---|
+| ppo_XOM_window2_model.zip | Found |
+| ppo_XOM_window2_vecnorm.pkl | Found |
+| ppo_XOM_window2_features.json | Found and readable |
+| ppo_XOM_window2_model_info.json | Found and readable |
+| ppo_XOM_window2_probability_config.json | Found and readable |
+
+## Test Result
+
+The QuantConnect artifact-loading test passed.
+
+Key log result:
+
+`ARTIFACT CHECK PASSED: all selected UNH/XOM artifacts are available and readable.`
+
+## Interpretation
+
+This confirms that QuantConnect Object Store contains the correct selected model-artifact set for the current lead candidates:
+
+| Symbol | Selected Prefix | Artifact Status |
+|---|---|---|
+| UNH | ppo_UNH_window1 | Passed |
+| XOM | ppo_XOM_window2 | Passed |
+
+This was a read-only validation test. It intentionally did not place trades and did not attempt to run Stable-Baselines3/PPO inference inside QuantConnect.
+
+## Updated Validation Status
+
+| Validation Stage | Status |
+|---|---|
+| Hardcoded signal smoke test | Passed |
+| Object Store signal ingestion | Passed |
+| Date-aligned Object Store signal validation | Passed |
+| Object Store model-artifact loading | Passed |
+
+## Next Recommended Step
+
+The next recommended step is a full LEAN backtest with precomputed dynamic signals.
+
+This should use a signal file generated outside QuantConnect from the VS Code PPO pipeline, then uploaded to Object Store and consumed by LEAN during the backtest.
+
+This is preferred before attempting live PPO model inference inside QuantConnect because it keeps model execution, feature generation, and trading simulation separated for debugging.
