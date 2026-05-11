@@ -1,0 +1,558 @@
+{
+  "producer": "ppo_research_pipeline",
+  "description": "Precomputed dynamic PPO signals for UNH/XOM LEAN test",
+  "interval": "1h",
+  "generated_utc": "2026-05-11T16:38:17.162877+00:00",
+  "symbols": [
+    "UNH",
+    "XOM"
+  ],
+  "selected_models": {
+    "UNH": "ppo_UNH_window1",
+    "XOM": "ppo_XOM_window2"
+  },
+  "max_abs_weight": 0.25,
+  "min_confidence": 0.1,
+  "signals": [
+    {
+      "timestamp": "2026-02-10T09:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5997222065925598,
+      "action": -0.5997222065925598,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T10:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5989664793014526,
+      "action": -0.5989664793014526,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T11:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5811379551887512,
+      "action": -0.5811379551887512,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T12:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5893281102180481,
+      "action": -0.5893281102180481,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T13:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5878347754478455,
+      "action": -0.5878347754478455,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T14:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5718669891357422,
+      "action": -0.5718669891357422,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T15:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.590202271938324,
+      "action": -0.590202271938324,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T16:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5888683199882507,
+      "action": -0.5888683199882507,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T17:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.566247284412384,
+      "action": -0.566247284412384,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T18:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5838643908500671,
+      "action": -0.5838643908500671,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T19:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5873836874961853,
+      "action": -0.5873836874961853,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T20:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5742129683494568,
+      "action": -0.5742129683494568,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T21:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5817727446556091,
+      "action": -0.5817727446556091,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T22:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5807673335075378,
+      "action": -0.5807673335075378,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T23:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5886318683624268,
+      "action": -0.5886318683624268,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T00:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5813916921615601,
+      "action": -0.5813916921615601,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T01:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5499029159545898,
+      "action": -0.5499029159545898,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T02:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5785439610481262,
+      "action": -0.5785439610481262,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T03:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5754461884498596,
+      "action": -0.5754461884498596,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T04:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5579594373703003,
+      "action": -0.5579594373703003,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T05:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5554869771003723,
+      "action": -0.5554869771003723,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T06:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5782880187034607,
+      "action": -0.5782880187034607,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T07:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5652398467063904,
+      "action": -0.5652398467063904,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T08:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5824894309043884,
+      "action": -0.5824894309043884,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T09:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5812706351280212,
+      "action": -0.5812706351280212,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T10:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5822661519050598,
+      "action": -0.5822661519050598,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T11:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5809980034828186,
+      "action": -0.5809980034828186,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T12:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5899760127067566,
+      "action": -0.5899760127067566,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T13:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5874801278114319,
+      "action": -0.5874801278114319,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-11T14:30:00+00:00",
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "signal": "SELL",
+      "confidence": 0.5783774256706238,
+      "action": -0.5783774256706238,
+      "target_weight": -0.25
+    },
+    {
+      "timestamp": "2026-02-10T09:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.708378791809082,
+      "action": 0.708378791809082,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-10T10:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.626504123210907,
+      "action": 0.626504123210907,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-10T11:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.7652398347854614,
+      "action": 0.7652398347854614,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-10T12:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.4126670956611633,
+      "action": 0.4126670956611633,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-10T13:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.3581540882587433,
+      "action": 0.3581540882587433,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-10T14:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.6594477891921997,
+      "action": 0.6594477891921997,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-10T15:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "HOLD",
+      "confidence": 0.0487395413219928,
+      "action": -0.0487395413219928,
+      "target_weight": 0.0
+    },
+    {
+      "timestamp": "2026-02-10T16:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.3217892944812774,
+      "action": 0.3217892944812774,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-10T17:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.5636290311813354,
+      "action": 0.5636290311813354,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-10T18:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "HOLD",
+      "confidence": 0.0163977183401584,
+      "action": -0.0163977183401584,
+      "target_weight": 0.0
+    },
+    {
+      "timestamp": "2026-02-10T19:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.2971362173557281,
+      "action": 0.2971362173557281,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-10T20:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.3094444870948791,
+      "action": 0.3094444870948791,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-10T21:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "HOLD",
+      "confidence": 0.0078227939084172,
+      "action": -0.0078227939084172,
+      "target_weight": 0.0
+    },
+    {
+      "timestamp": "2026-02-10T22:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.4224676191806793,
+      "action": 0.4224676191806793,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-10T23:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.5139403343200684,
+      "action": 0.5139403343200684,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T00:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.3221733272075653,
+      "action": 0.3221733272075653,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T01:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.5107966661453247,
+      "action": 0.5107966661453247,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T02:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.6690012216567993,
+      "action": 0.6690012216567993,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T03:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.4362738132476806,
+      "action": 0.4362738132476806,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T04:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.6465250253677368,
+      "action": 0.6465250253677368,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T05:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.2891914546489715,
+      "action": 0.2891914546489715,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T06:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.2629710435867309,
+      "action": 0.2629710435867309,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T07:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.7076345086097717,
+      "action": 0.7076345086097717,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T08:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.2959254682064056,
+      "action": 0.2959254682064056,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T09:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.4879992604255676,
+      "action": 0.4879992604255676,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T10:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.5546540021896362,
+      "action": 0.5546540021896362,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T11:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.3622371256351471,
+      "action": 0.3622371256351471,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T12:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.6014648675918579,
+      "action": 0.6014648675918579,
+      "target_weight": 0.25
+    },
+    {
+      "timestamp": "2026-02-11T13:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "BUY",
+      "confidence": 0.1519161462783813,
+      "action": 0.1519161462783813,
+      "target_weight": 0.1519161462783813
+    },
+    {
+      "timestamp": "2026-02-11T14:30:00+00:00",
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "signal": "HOLD",
+      "confidence": 0.0797174647450447,
+      "action": 0.0797174647450447,
+      "target_weight": 0.0
+    }
+  ]
+}
