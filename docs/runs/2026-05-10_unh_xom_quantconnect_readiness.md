@@ -1,18 +1,3 @@
-Create a **new `.md` file** now.
-
-The `2026-05-09_4ticker_150k_focused_validation.md` file has done its job. It documents the research run and its addendums. If we keep adding to it, it will become too long and harder to follow.
-
-The next phase is no longer “4-ticker 150k validation.” It is **QuantConnect/LEAN readiness for the selected lead candidates**.
-
-Use this filename:
-
-```text
-docs/runs/2026-05-10_unh_xom_quantconnect_readiness.md
-```
-
-Paste this:
-
-````markdown
 # 2026-05-10 — UNH/XOM QuantConnect Readiness Check
 
 ## Objective
@@ -38,7 +23,7 @@ The prior four-ticker 150k validation identified UNH and XOM as the strongest le
 The final selected lead windows were:
 
 | Symbol | Selected Window | Selected Prefix | Selection Reason |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | UNH | 0-3500 | ppo_UNH_window1 | Strongest execution-adjusted edge |
 | XOM | 500-4000 | ppo_XOM_window2 | Strongest moderate execution-adjusted edge |
 
@@ -51,7 +36,7 @@ Artifact availability check:
 ```bash
 ls models/ppo_models_master | grep "ppo_UNH_window1"
 ls models/ppo_models_master | grep "ppo_XOM_window2"
-````
+```
 
 Full readiness sequence:
 
@@ -108,14 +93,14 @@ ppo_XOM_window2_vecnorm.pkl
 
 All local readiness checks completed successfully.
 
-| Check                      | Result          |
-| -------------------------- | --------------- |
-| Latest run review          | Passed          |
-| Execution-realism analysis | Passed          |
-| Lead-candidate backtest    | Passed          |
-| QuantConnect signal export | Passed          |
-| UNH selected prefix        | ppo_UNH_window1 |
-| XOM selected prefix        | ppo_XOM_window2 |
+| Check | Result |
+| --- | --- |
+| Latest run review | Passed |
+| Execution-realism analysis | Passed |
+| Lead-candidate backtest | Passed |
+| QuantConnect signal export | Passed |
+| UNH selected prefix | ppo_UNH_window1 |
+| XOM selected prefix | ppo_XOM_window2 |
 
 The final signal export used the execution-adjusted selector:
 
@@ -147,17 +132,17 @@ reports/backtests/quantconnect_signals_20260510_212219/live_signals.json
 
 The lead-candidate execution-aware backtest selected the correct execution-adjusted windows:
 
-| Symbol | Window   | Prefix          | Execution Edge vs Buy & Hold |
-| ------ | -------- | --------------- | ---------------------------: |
-| UNH    | 0-3500   | ppo_UNH_window1 |                   107,023.61 |
-| XOM    | 500-4000 | ppo_XOM_window2 |                    50,976.85 |
+| Symbol | Window | Prefix | Execution Edge vs Buy & Hold |
+| --- | --- | --- | ---: |
+| UNH | 0-3500 | ppo_UNH_window1 | 107,023.61 |
+| XOM | 500-4000 | ppo_XOM_window2 | 50,976.85 |
 
 Under the 5 bps execution-cost assumption, both remained PPO-favorable:
 
-| Symbol | Execution Final Equity | Buy & Hold |       Edge | Estimated Sharpe | Win Rate |
-| ------ | ---------------------: | ---------: | ---------: | ---------------: | -------: |
-| UNH    |             172,278.60 |  65,254.99 | 107,023.61 |            1.661 |    53.7% |
-| XOM    |             153,250.09 | 102,273.24 |  50,976.85 |            1.105 |    42.0% |
+| Symbol | Execution Final Equity | Buy & Hold | Edge | Estimated Sharpe | Win Rate |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| UNH | 172,278.60 | 65,254.99 | 107,023.61 | 1.661 | 53.7% |
+| XOM | 153,250.09 | 102,273.24 | 50,976.85 | 1.105 | 42.0% |
 
 ## Important Fix Confirmed
 
@@ -191,13 +176,13 @@ This was still a local readiness check.
 
 It did not yet test:
 
-* QuantConnect ObjectStore loading
-* LEAN historical data behavior
-* order execution inside QuantConnect
-* portfolio target sizing inside LEAN
-* stale-signal rejection inside QuantConnect
-* brokerage model fees or fills
-* live/paper trading behavior
+- QuantConnect ObjectStore loading
+- LEAN historical data behavior
+- order execution inside QuantConnect
+- portfolio target sizing inside LEAN
+- stale-signal rejection inside QuantConnect
+- brokerage model fees or fills
+- live/paper trading behavior
 
 ## Research Conclusion
 
@@ -205,28 +190,13 @@ The UNH/XOM QuantConnect readiness check passed.
 
 Current lead candidates:
 
-| Rank | Symbol | Prefix          | Current Status           |
-| ---: | ------ | --------------- | ------------------------ |
-|    1 | UNH    | ppo_UNH_window1 | Strongest lead candidate |
-|    2 | XOM    | ppo_XOM_window2 | Viable active candidate  |
+| Rank | Symbol | Prefix | Current Status |
+| ---: | --- | --- | --- |
+| 1 | UNH | ppo_UNH_window1 | Strongest lead candidate |
+| 2 | XOM | ppo_XOM_window2 | Viable active candidate |
 
 Recommended next step:
 
 `Build a minimal QuantConnect/LEAN smoke test for UNH and XOM that loads the exported signal file, rejects stale signals, maps BUY/SELL/HOLD to target weights, and logs intended portfolio targets before attempting a fuller backtest.`
 
-````
-
-Then commit it locally like this:
-
-```bash
-git status --short
-git add docs/runs/2026-05-10_unh_xom_quantconnect_readiness.md
-git commit -m "Document UNH XOM QuantConnect readiness check"
-git stash push -m "local experiment config"
-git pull --rebase origin main
-git push
-git stash pop
-git status --short
-````
-
-This should be a separate file because it marks a new phase: **rresearch validation has reached the point where LEAN integration testing is justified for UNH and XOM only**.
+This should be a separate file because it marks a new phase: **research validation has reached the point where LEAN integration testing is justified for UNH and XOM only**.
