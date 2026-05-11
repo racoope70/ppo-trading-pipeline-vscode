@@ -264,3 +264,56 @@ Instead of hardcoding the signal payload inside the algorithm, upload `live_sign
 Recommended next test:
 
 `QuantConnect Object Store signal ingestion test for UNH and XOM using live_signals.json.`
+---
+
+## Addendum — Object Store Signal Ingestion Test
+
+A second QuantConnect/LEAN smoke test was completed using `live_signals.json` loaded from QuantConnect Object Store.
+
+The prior smoke test used a hardcoded embedded signal payload. This follow-up test replaced the embedded payload with Object Store loading to confirm that QuantConnect could read the exported VS Code signal file at runtime.
+
+Object Store file used:
+
+`live_signals.json`
+
+Source file from local VS Code export:
+
+`reports/backtests/quantconnect_signals_20260510_212219/live_signals.json`
+
+## Test Result
+
+The Object Store ingestion test passed.
+
+| Metric | Result |
+|---|---:|
+| Start equity | 100,000.00 |
+| End equity | 100,447.58 |
+| Net profit | 447.58 |
+| Total orders | 2 |
+| Holdings | 49,397.43 |
+| Fees | 2.00 |
+| Portfolio turnover | 49.29% |
+
+## Interpretation
+
+This confirms that QuantConnect can load `live_signals.json` from Object Store, parse the selected PPO signals, and submit holdings changes for UNH and XOM.
+
+The test still used `self.bypass_stale_check = True`, so this was not a date-accurate or production-ready validation. The purpose was to confirm Object Store ingestion and order-path functionality.
+
+## Updated Validation Status
+
+| Step | Status |
+|---|---|
+| Hardcoded signal smoke test | Passed |
+| Object Store signal ingestion | Passed |
+| UNH signal path | Passed |
+| XOM signal path | Passed |
+| LEAN order creation | Passed |
+
+## Next Recommended Step
+
+The next step should be a stale-signal validation test.
+
+Recommended test:
+
+`Create a date-aligned Object Store signal file and rerun the QuantConnect smoke test with self.bypass_stale_check = False.`
