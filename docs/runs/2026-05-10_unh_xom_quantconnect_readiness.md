@@ -317,3 +317,115 @@ The next step should be a stale-signal validation test.
 Recommended test:
 
 `Create a date-aligned Object Store signal file and rerun the QuantConnect smoke test with self.bypass_stale_check = False.`
+
+---
+
+## Addendum — Date-Aligned Object Store Signal Validation
+
+A date-aligned QuantConnect/LEAN Object Store signal validation test was completed for the selected lead candidates, UNH and XOM.
+
+This test was the next step after the Object Store smoke test. The earlier smoke test confirmed that QuantConnect could read `live_signals.json` from Object Store and submit orders, but it used `self.bypass_stale_check = True`.
+
+This follow-up test turned stale-signal validation back on:
+
+`self.bypass_stale_check = False`
+
+The goal was to confirm that QuantConnect could still read the Object Store signal payload, validate signal freshness, map signals to target holdings, and submit orders when the signal timestamps were aligned with the backtest clock.
+
+## Test Payload
+
+A dedicated date-aligned test payload was created and uploaded to QuantConnect Object Store.
+
+Object Store key:
+
+`live_signals_date_aligned_feb10.json`
+
+Local repository file:
+
+`quantconnect/test_payloads/live_signals_date_aligned_feb10.json`
+
+The test payload used the same selected PPO prefixes:
+
+| Symbol | Prefix | Signal | Action | Confidence |
+|---|---|---|---:|---:|
+| UNH | ppo_UNH_window1 | SELL | -0.5823 | 0.5823 |
+| XOM | ppo_XOM_window2 | BUY | 1.0000 | 1.0000 |
+
+The signal timestamp was aligned to the QuantConnect test window:
+
+`2026-02-10 09:30:00+00:00`
+
+## QuantConnect Test Configuration
+
+| Setting | Value |
+|---|---|
+| Start date | 2026-02-10 |
+| End date | 2026-02-13 |
+| Resolution | Hour |
+| Symbols | UNH, XOM |
+| Object Store key | live_signals_date_aligned_feb10.json |
+| Stale-check bypass | False |
+| Max signal age | 10 days |
+| Max absolute target weight | 25% |
+| Minimum confidence | 0.10 |
+
+The QuantConnect code used:
+
+`quantconnect/lean_unh_xom_date_aligned_signal_test.py`
+
+## Test Result
+
+The date-aligned Object Store signal validation passed.
+
+| Metric | Result |
+|---|---:|
+| Start equity | 100,000.00 |
+| End equity | 100,447.58 |
+| Net profit | 447.58 |
+| Total orders | 2 |
+| Holdings | 49,397.43 |
+| Fees | 2.00 |
+| Portfolio turnover | 49.29% |
+
+## Interpretation
+
+This test confirmed that QuantConnect can read a signal payload from Object Store and execute the selected UNH/XOM signals without bypassing stale-signal validation.
+
+The earlier zero-order run was caused by timestamp alignment issues. After the signal timestamps were aligned to the QuantConnect backtest clock, both signals passed validation and generated orders.
+
+This confirms the following path now works:
+
+| Step | Status |
+|---|---|
+| Object Store JSON upload | Passed |
+| Object Store JSON read inside LEAN | Passed |
+| Signal payload parsing | Passed |
+| Stale-signal validation with bypass disabled | Passed |
+| UNH signal mapping | Passed |
+| XOM signal mapping | Passed |
+| `set_holdings` order path | Passed |
+| LEAN order creation | Passed |
+
+## Updated Validation Status
+
+The UNH/XOM QuantConnect validation path has now passed three levels:
+
+| Validation Stage | Status |
+|---|---|
+| Hardcoded signal smoke test | Passed |
+| Object Store signal ingestion with stale-check bypass | Passed |
+| Date-aligned Object Store signal validation with stale-check active | Passed |
+
+## Limitation
+
+This was still a controlled validation test. It used a static Object Store JSON payload and did not yet run live model inference inside QuantConnect.
+
+The signal timestamp was intentionally aligned to the QuantConnect test window to validate the freshness-control logic. This was a safety test, not a full profitability backtest.
+
+## Next Recommended Step
+
+The next engineering step should be an Object Store model-artifact loading test.
+
+Recommended next test:
+
+`Upload the selected UNH and XOM PPO artifacts to QuantConnect Object Store and verify that QuantConnect can locate and read the expected model, VecNormalize, feature, model_info, and probability_config files for ppo_UNH_window1 and ppo_XOM_window2.`
