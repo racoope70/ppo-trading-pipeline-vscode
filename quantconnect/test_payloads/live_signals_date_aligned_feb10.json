@@ -1,0 +1,26 @@
+{
+  "generated_utc": "2026-02-10T14:30:00+00:00",
+  "valid_until_utc": "2026-02-13T14:30:00+00:00",
+  "producer": "ppo_research_pipeline",
+  "interval": "1h",
+  "models": [
+    {
+      "symbol": "UNH",
+      "prefix": "ppo_UNH_window1",
+      "timestamp": "2026-02-10 14:30:00+00:00",
+      "price": 379.82000732421875,
+      "signal": "SELL",
+      "confidence": 0.5823357701301575,
+      "action": -0.5823357701301575
+    },
+    {
+      "symbol": "XOM",
+      "prefix": "ppo_XOM_window2",
+      "timestamp": "2026-02-10 14:30:00+00:00",
+      "price": 144.39999389648438,
+      "signal": "BUY",
+      "confidence": 1.0,
+      "action": 1.0
+    }
+  ]
+}
