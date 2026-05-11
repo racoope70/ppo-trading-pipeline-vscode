@@ -563,47 +563,161 @@ Key log confirmations:
 Loaded dynamic signal payload from Object Store key: unh_xom_dynamic_signals.json
 UNH | loaded signal rows: 30
 XOM | loaded signal rows: 30
+```
+
 The backtest then mapped signals to target holdings through time.
+
 Example signal executions:
+
+```text
 2026-02-10 10:00:00 | UNH | signal_time=2026-02-10 09:30:00 | prefix=ppo_UNH_window1 | signal=SELL | confidence=0.5997 | action=-0.5997 | target_weight=-0.2500
 
 2026-02-10 10:00:00 | XOM | signal_time=2026-02-10 09:30:00 | prefix=ppo_XOM_window2 | signal=BUY | confidence=0.7084 | action=0.7084 | target_weight=0.2500
 
 2026-02-10 16:00:00 | XOM | signal_time=2026-02-10 15:30:00 | prefix=ppo_XOM_window2 | signal=HOLD | confidence=0.0487 | action=-0.0487 | target_weight=0.0000
-Backtest Metrics
-Metric	Result
-Start equity	100,000.00
-End equity	100,447.58
-Net profit	447.58
-Total orders	3
-Holdings	49,397.43
-Fees	2.00
-Portfolio turnover	49.29%
-Interpretation
+```
+
+## Backtest Metrics
+
+| Metric | Result |
+|---|---:|
+| Start equity | 100,000.00 |
+| End equity | 100,447.58 |
+| Net profit | 447.58 |
+| Total orders | 3 |
+| Holdings | 49,397.43 |
+| Fees | 2.00 |
+| Portfolio turnover | 49.29% |
+
+## Interpretation
+
 This test confirms that QuantConnect can run a dynamic precomputed signal backtest using signals exported from the VS Code PPO research pipeline.
+
 The test validated the following path:
-Step	Status
-Dynamic signal export from VS Code	Passed
-Object Store upload	Passed
-Object Store dynamic JSON read inside LEAN	Passed
-Signal timestamp matching	Passed
-UNH dynamic signal consumption	Passed
-XOM dynamic signal consumption	Passed
-BUY/SELL/HOLD target-weight mapping	Passed
-LEAN order creation from dynamic signals	Passed
+
+| Step | Status |
+|---|---|
+| Dynamic signal export from VS Code | Passed |
+| Object Store upload | Passed |
+| Object Store dynamic JSON read inside LEAN | Passed |
+| Signal timestamp matching | Passed |
+| UNH dynamic signal consumption | Passed |
+| XOM dynamic signal consumption | Passed |
+| BUY/SELL/HOLD target-weight mapping | Passed |
+| LEAN order creation from dynamic signals | Passed |
+
 This is a stronger validation than the prior static signal smoke tests because LEAN consumed a time-series signal file and generated orders from changing signals through time.
-Limitation
+
+## Limitation
+
 This was still a controlled short-window test. It did not run PPO inference inside QuantConnect and did not yet evaluate a full historical period.
+
 The PPO model execution, feature engineering, and signal generation remained outside QuantConnect in the VS Code research pipeline.
-Updated Validation Status
-Validation Stage	Status
-Hardcoded signal smoke test	Passed
-Object Store signal ingestion	Passed
-Date-aligned Object Store signal validation	Passed
-Object Store model-artifact loading	Passed
-Full LEAN backtest with precomputed dynamic signals	Passed
-Next Recommended Step
+
+## Updated Validation Status
+
+| Validation Stage | Status |
+|---|---|
+| Hardcoded signal smoke test | Passed |
+| Object Store signal ingestion | Passed |
+| Date-aligned Object Store signal validation | Passed |
+| Object Store model-artifact loading | Passed |
+| Full LEAN backtest with precomputed dynamic signals | Passed |
+
+## Next Recommended Step
+
 The next step should be to expand the dynamic signal file from a short controlled test window to a longer historical LEAN backtest window.
+
 Recommended next test:
+
 Generate a longer UNH/XOM dynamic signal file covering the full available prediction compatibility window and run a longer QuantConnect/LEAN backtest using the same Object Store dynamic-signal approach.
 
+
+## Addendum — Market-Hours Dynamic Signal Alignment and Data Availability Check
+
+A market-hours-aligned dynamic signal test was completed for the UNH/XOM QuantConnect path.
+
+The goal was to confirm whether the longer 250-row dynamic signal file could align correctly with LEAN hourly bars and whether QuantConnect would provide enough UNH/XOM hourly data to evaluate a longer historical window.
+
+## Market-Hours Dynamic Signal Payload
+
+Object Store key:
+
+`unh_xom_dynamic_signals_250marketbars.json`
+
+The market-hours payload was created to avoid the earlier issue where signals were generated every calendar hour, including nights and weekends. The updated payload used only market-hour timestamps:
+
+`10:00, 11:00, 12:00, 13:00, 14:00, 15:00, 16:00 UTC`
+
+The dynamic signal file loaded successfully:
+
+```text
+Loaded dynamic signal payload from Object Store key: unh_xom_dynamic_signals_250marketbars.json
+UNH | loaded signal rows: 250
+XOM | loaded signal rows: 250
+````
+
+The signal timestamps aligned directly with LEAN hourly bars:
+
+```text
+2026-02-10 10:00:00 | UNH | signal_time=2026-02-10 10:00:00
+2026-02-10 10:00:00 | XOM | signal_time=2026-02-10 10:00:00
+2026-02-10 12:00:00 | XOM | signal_time=2026-02-10 12:00:00
+2026-02-10 15:00:00 | XOM | signal_time=2026-02-10 15:00:00
+2026-02-10 16:00:00 | XOM | signal_time=2026-02-10 16:00:00
+```
+
+## Backtest Result
+
+| Metric                |     Result |
+| --------------------- | ---------: |
+| Start equity          | 100,000.00 |
+| End equity            | 100,279.97 |
+| Net profit            |     271.26 |
+| Total orders          |          5 |
+| Holdings              |  40,362.25 |
+| Fees                  |       4.00 |
+| Portfolio turnover    |     90.07% |
+| Data points processed |         29 |
+
+## Data Availability Diagnostic
+
+A separate UNH/XOM hourly data availability check was then run with no signals, no Object Store, and no orders.
+
+The diagnostic used the same intended date range:
+
+`2026-02-10 through 2026-03-20`
+
+Result:
+
+```text
+UNH SUMMARY | bars=7 | first_bar=2026-02-10 10:00:00 | last_bar=2026-02-10 16:00:00 | unique_trading_dates=1
+XOM SUMMARY | bars=7 | first_bar=2026-02-10 10:00:00 | last_bar=2026-02-10 16:00:00 | unique_trading_dates=1
+```
+
+This confirmed that QuantConnect only provided Feb 10 hourly bars for UNH and XOM in this current setup, despite the March 20 end date.
+
+## Interpretation
+
+The market-hours dynamic signal logic passed as an engineering validation.
+
+Confirmed:
+
+| Check                                                        | Status |
+| ------------------------------------------------------------ | ------ |
+| Market-hours dynamic signal payload loaded from Object Store | Passed |
+| 250 UNH signal rows loaded                                   | Passed |
+| 250 XOM signal rows loaded                                   | Passed |
+| Signal timestamps aligned with LEAN hourly bars              | Passed |
+| Dynamic target-weight mapping worked                         | Passed |
+| LEAN order creation worked                                   | Passed |
+
+Limitation:
+
+The intended longer historical evaluation did not complete because QuantConnect only fed one trading day of UNH/XOM hourly bars in this setup.
+
+## Current Status
+
+Passed: market-hour signal timestamps aligned with LEAN bars.
+
+Blocked: QuantConnect run only processed Feb 10 data despite the March 20 end date, so longer historical behavior was not evaluated.
