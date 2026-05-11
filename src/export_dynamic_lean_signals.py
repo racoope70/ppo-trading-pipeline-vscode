@@ -5,7 +5,7 @@ It converts saved *_predictions_compat.csv files into a dynamic signal file
 that QuantConnect/LEAN can read from Object Store.
 
 Output:
-    quantconnect/test_payloads/unh_xom_dynamic_signals.json
+    quantconnect/test_payloads/unh_xom_dynamic_signals_250rows.json
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import pandas as pd
 
 
 BACKTESTS_DIR = Path("reports/backtests")
-OUTPUT_PATH = Path("quantconnect/test_payloads/unh_xom_dynamic_signals.json")
+OUTPUT_PATH = Path("quantconnect/test_payloads/unh_xom_dynamic_signals_250rows.json")
 
 SELECTED_MODELS = {
     "UNH": "ppo_UNH_window1",
@@ -26,7 +26,7 @@ SELECTED_MODELS = {
 }
 
 LEAN_START_TIME = datetime(2026, 2, 10, 9, 30, tzinfo=timezone.utc)
-MAX_ROWS_PER_SYMBOL = 30
+MAX_ROWS_PER_SYMBOL = 250
 
 MAX_ABS_WEIGHT = 0.25
 MIN_CONFIDENCE = 0.10
