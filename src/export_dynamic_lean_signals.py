@@ -1,11 +1,11 @@
 """Export precomputed UNH/XOM PPO signals into a LEAN-friendly JSON file.
 
-This script does not retrain models and does not run live inference.
-It converts saved *_predictions_compat.csv files into a dynamic signal file
-that QuantConnect/LEAN can read from Object Store.
+Creates market-hours-aligned timestamps only:
+10:00, 11:00, 12:00, 13:00, 14:00, 15:00, 16:00 UTC
+Monday through Friday.
 
 Output:
-    quantconnect/test_payloads/unh_xom_dynamic_signals_250rows.json
+    quantconnect/test_payloads/unh_xom_dynamic_signals_250marketbars.json
 """
 
 from __future__ import annotations
@@ -18,16 +18,17 @@ import pandas as pd
 
 
 BACKTESTS_DIR = Path("reports/backtests")
-OUTPUT_PATH = Path("quantconnect/test_payloads/unh_xom_dynamic_signals_250rows.json")
+OUTPUT_PATH = Path("quantconnect/test_payloads/unh_xom_dynamic_signals_250marketbars.json")
 
 SELECTED_MODELS = {
     "UNH": "ppo_UNH_window1",
     "XOM": "ppo_XOM_window2",
 }
 
-LEAN_START_TIME = datetime(2026, 2, 10, 9, 30, tzinfo=timezone.utc)
-MAX_ROWS_PER_SYMBOL = 250
+LEAN_START_DATE = datetime(2026, 2, 10, tzinfo=timezone.utc)
+MARKET_HOURS_UTC = [10, 11, 12, 13, 14, 15, 16]
 
+MAX_ROWS_PER_SYMBOL = 250
 MAX_ABS_WEIGHT = 0.25
 MIN_CONFIDENCE = 0.10
 
@@ -43,6 +44,32 @@ def find_latest_training_run() -> Path:
         )
 
     return summaries[-1].parent
+
+
+def market_bar_timestamps(start_date: datetime, count: int) -> list[datetime]:
+    timestamps = []
+    day = start_date
+
+    while len(timestamps) < count:
+        if day.weekday() < 5:
+            for hour in MARKET_HOURS_UTC:
+                if len(timestamps) >= count:
+                    break
+
+                timestamps.append(
+                    datetime(
+                        day.year,
+                        day.month,
+                        day.day,
+                        hour,
+                        0,
+                        tzinfo=timezone.utc,
+                    )
+                )
+
+        day += timedelta(days=1)
+
+    return timestamps
 
 
 def action_to_signal(action: float) -> str:
@@ -97,6 +124,7 @@ def main() -> None:
     run_dir = find_latest_training_run()
     print("Using training run:", run_dir)
 
+    timestamps = market_bar_timestamps(LEAN_START_DATE, MAX_ROWS_PER_SYMBOL)
     all_signals = []
 
     for symbol, prefix in SELECTED_MODELS.items():
@@ -107,12 +135,11 @@ def main() -> None:
             signal = str(row["Signal"]).upper()
             confidence = abs(action)
             target_weight = action_to_target_weight(signal, action, confidence)
-
-            timestamp = LEAN_START_TIME + timedelta(hours=idx)
+            timestamp = timestamps[idx]
 
             all_signals.append(
                 {
-                    "timestamp": timestamp.isoformat().replace("+00:00", "+00:00"),
+                    "timestamp": timestamp.isoformat(),
                     "symbol": symbol,
                     "prefix": prefix,
                     "signal": signal,
@@ -124,11 +151,12 @@ def main() -> None:
 
     payload = {
         "producer": "ppo_research_pipeline",
-        "description": "Precomputed dynamic PPO signals for UNH/XOM LEAN test",
-        "interval": "1h",
+        "description": "Precomputed market-hours dynamic PPO signals for UNH/XOM LEAN test",
+        "interval": "1h_market_bars",
         "generated_utc": datetime.now(timezone.utc).isoformat(),
         "symbols": list(SELECTED_MODELS.keys()),
         "selected_models": SELECTED_MODELS,
+        "market_hours_utc": MARKET_HOURS_UTC,
         "max_abs_weight": MAX_ABS_WEIGHT,
         "min_confidence": MIN_CONFIDENCE,
         "signals": all_signals,
@@ -141,6 +169,7 @@ def main() -> None:
 
     print("Saved dynamic LEAN signals to:", OUTPUT_PATH)
     print("Signal rows:", len(all_signals))
+    print("Rows per symbol:", MAX_ROWS_PER_SYMBOL)
     print("First timestamp:", all_signals[0]["timestamp"])
     print("Last timestamp:", all_signals[-1]["timestamp"])
 
