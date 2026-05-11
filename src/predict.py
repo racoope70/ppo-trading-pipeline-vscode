@@ -81,6 +81,112 @@ def load_probability_config(
     return load_json(paths.probability_config_path)
 
 
+def choose_execution_adjusted_prefix(
+    symbol: str,
+    model_dir: Path = FINAL_MODEL_DIR,
+) -> str | None:
+    """Choose prefix using the latest execution-realism analysis when available.
+
+    This keeps live/QuantConnect export aligned with the research conclusion:
+    prefer the best moderate-scenario execution-adjusted window when
+    execution_realism_analysis.csv exists.
+    """
+    search_root = Path("reports/backtests")
+
+    analysis_files = sorted(
+        search_root.glob("ppo_walkforward_results_*/execution_realism_analysis.csv")
+    )
+
+    if not analysis_files:
+        return None
+
+    latest_analysis = analysis_files[-1]
+
+    try:
+        execution = pd.read_csv(latest_analysis)
+    except Exception as exc:
+        logging.warning(
+            "Could not read execution realism analysis at %s: %s",
+            latest_analysis,
+            exc,
+        )
+        return None
+
+    required_columns = {
+        "Ticker",
+        "Scenario",
+        "Prefix",
+        "Execution_Edge_vs_BuyHold",
+    }
+    missing_columns = required_columns - set(execution.columns)
+
+    if missing_columns:
+        logging.warning(
+            "Execution realism analysis missing columns %s. Falling back to metadata selector.",
+            sorted(missing_columns),
+        )
+        return None
+
+    candidates = execution[
+        (execution["Ticker"].astype(str).eq(symbol))
+        & (execution["Scenario"].astype(str).str.lower().eq("moderate"))
+    ].copy()
+
+    if candidates.empty:
+        return None
+
+    candidates["Execution_Edge_vs_BuyHold"] = pd.to_numeric(
+        candidates["Execution_Edge_vs_BuyHold"],
+        errors="coerce",
+    )
+
+    candidates = candidates.dropna(subset=["Execution_Edge_vs_BuyHold"])
+
+    if candidates.empty:
+        return None
+
+    best = candidates.sort_values(
+        "Execution_Edge_vs_BuyHold",
+        ascending=False,
+    ).iloc[0]
+
+    prefix = str(best["Prefix"])
+    paths = get_artifact_paths(prefix, model_dir)
+
+    required_artifacts = [
+        paths.model_path,
+        paths.vecnorm_path,
+        paths.features_path,
+        paths.model_info_path,
+        paths.probability_config_path,
+    ]
+
+    missing_artifacts = [path for path in required_artifacts if not path.exists()]
+
+    if missing_artifacts:
+        logging.warning(
+            "Execution-adjusted prefix %s selected for %s, but artifacts are missing: %s. "
+            "Falling back to metadata selector.",
+            prefix,
+            symbol,
+            missing_artifacts,
+        )
+        return None
+
+    logging.info(
+        (
+            "Selected execution-adjusted model for %s: %s | "
+            "ExecutionEdge=%.2f | Source=%s"
+        ),
+        symbol,
+        prefix,
+        float(best["Execution_Edge_vs_BuyHold"]),
+        latest_analysis,
+    )
+
+    return prefix
+
+
 def choose_best_prefix(
     symbol: str,
     model_dir: Path = FINAL_MODEL_DIR,
@@ -98,6 +204,14 @@ def choose_best_prefix(
         4. Rank by Sharpe, final portfolio, and window number.
         5. Fall back to highest window number if metadata is missing.
     """
+    execution_adjusted_prefix = choose_execution_adjusted_prefix(
+        symbol=symbol,
+        model_dir=model_dir,
+    )
+
+    if execution_adjusted_prefix is not None:
+        return execution_adjusted_prefix
+
     prefixes = [
         prefix
         for prefix in list_model_prefixes(model_dir)
