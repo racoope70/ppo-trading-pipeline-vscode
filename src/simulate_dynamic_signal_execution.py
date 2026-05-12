@@ -1,7 +1,8 @@
 """Simulate local execution from a precomputed dynamic LEAN signal payload.
 
 Purpose:
-    - Read the market-hours dynamic signal payload.
+    - Read a market-hours dynamic signal payload.
+    - Read selected model prefixes directly from payload["selected_models"].
     - Load matching Close-price series from saved *_predictions_compat.csv files.
     - Simulate target-weight portfolio rebalancing locally.
     - Apply mark-to-market PnL using prior weights and symbol returns.
@@ -10,6 +11,9 @@ Purpose:
 Default input:
     quantconnect/test_payloads/unh_xom_dynamic_signals_250marketbars.json
 
+Also supports:
+    quantconnect/test_payloads/selected_dynamic_signals_4ticker_250marketbars.json
+
 Notes:
     This is not broker-accurate execution.
     This is a local research simulator to evaluate behavior over the full
@@ -17,7 +21,7 @@ Notes:
     longer UNH/XOM historical run.
 
     To avoid lookahead bias:
-    - Per-bar return is applied using weights held from the previous timestamp.
+    - Per-bar return is applied using weights held from the previous bar.
     - Then transaction costs are applied for changing into the new target weights.
 
     This version aligns signals and returns by per-symbol row order, not by
@@ -40,11 +44,6 @@ DEFAULT_PAYLOAD_PATH = Path(
 
 BACKTESTS_DIR = Path("reports/backtests")
 OUTPUT_DIR = Path("reports/dynamic_signal_execution")
-
-SELECTED_MODELS = {
-    "UNH": "ppo_UNH_window1",
-    "XOM": "ppo_XOM_window2",
-}
 
 STARTING_EQUITY = 100_000.00
 TOTAL_COST_BPS = 5.0
@@ -74,6 +73,33 @@ def load_payload(path: Path) -> dict:
         raise ValueError("Payload missing required key: signals")
 
     return payload
+
+
+def get_selected_models_from_payload(payload: dict) -> dict[str, str]:
+    """Read selected model prefixes from the signal payload.
+
+    Expected format:
+        {
+            "selected_models": {
+                "AAPL": "ppo_AAPL_window1",
+                "PFE": "ppo_PFE_window1",
+                "UNH": "ppo_UNH_window1",
+                "XOM": "ppo_XOM_window2"
+            }
+        }
+    """
+    selected_models = payload.get("selected_models")
+
+    if not isinstance(selected_models, dict) or not selected_models:
+        raise ValueError(
+            "Payload missing non-empty selected_models dictionary. "
+            "Expected format: {'AAPL': 'ppo_AAPL_window1', ...}"
+        )
+
+    return {
+        str(symbol).upper(): str(prefix)
+        for symbol, prefix in selected_models.items()
+    }
 
 
 def payload_to_dataframe(payload: dict) -> pd.DataFrame:
@@ -123,12 +149,27 @@ def load_symbol_returns(
 
     The payload timestamps are synthetic market-bar timestamps created for
     QuantConnect/LEAN alignment. The prediction CSVs have original historical
-    Datetime values. For local simulation, we align by per-symbol row order:
+    Datetime values.
+
+    For local simulation, this aligns by per-symbol row order:
     the last N prediction rows are matched to the N signal rows per symbol.
     """
     frames = []
 
+    signal_symbols = set(signals["symbol"].astype(str).str.upper().unique())
+    model_symbols = set(selected_models.keys())
+
+    missing_model_symbols = sorted(signal_symbols - model_symbols)
+    if missing_model_symbols:
+        raise ValueError(
+            "Payload has signal symbols missing from selected_models: "
+            f"{missing_model_symbols}"
+        )
+
     for symbol, prefix in selected_models.items():
+        symbol = str(symbol).upper()
+        prefix = str(prefix)
+
         signal_rows = (
             signals[signals["symbol"] == symbol]
             .sort_values("bar_index")
@@ -137,7 +178,10 @@ def load_symbol_returns(
         )
 
         if signal_rows.empty:
-            raise ValueError(f"No signal rows found for {symbol}")
+            raise ValueError(
+                f"No signal rows found for {symbol}. "
+                "Check payload symbols and selected_models."
+            )
 
         prediction_path = run_dir / f"{prefix}_predictions_compat.csv"
 
@@ -195,9 +239,62 @@ def load_symbol_returns(
             ]
         )
 
+    if not frames:
+        raise ValueError("No return frames were created. Check selected_models.")
+
     returns = pd.concat(frames, ignore_index=True)
+    returns["symbol"] = returns["symbol"].astype(str).str.upper()
 
     return returns.sort_values(["bar_index", "symbol"]).reset_index(drop=True)
+
+
+def validate_signal_return_coverage(
+    signals: pd.DataFrame,
+    returns: pd.DataFrame,
+) -> None:
+    """Fail loudly if any payload symbol is missing return rows."""
+    signal_symbols = sorted(signals["symbol"].astype(str).str.upper().unique())
+    return_symbols = sorted(returns["symbol"].astype(str).str.upper().unique())
+
+    missing_return_symbols = sorted(set(signal_symbols) - set(return_symbols))
+    extra_return_symbols = sorted(set(return_symbols) - set(signal_symbols))
+
+    if missing_return_symbols:
+        raise ValueError(
+            "Missing return data for payload symbols: "
+            f"{missing_return_symbols}. "
+            "Check payload selected_models and prediction compatibility files."
+        )
+
+    if extra_return_symbols:
+        raise ValueError(
+            "Return data contains symbols not present in payload signals: "
+            f"{extra_return_symbols}."
+        )
+
+    signal_counts = signals.groupby("symbol")["bar_index"].nunique()
+    return_counts = returns.groupby("symbol")["bar_index"].nunique()
+
+    mismatched_counts = []
+
+    for symbol in signal_symbols:
+        signal_count = int(signal_counts.loc[symbol])
+        return_count = int(return_counts.loc[symbol])
+
+        if signal_count != return_count:
+            mismatched_counts.append(
+                {
+                    "symbol": symbol,
+                    "signal_count": signal_count,
+                    "return_count": return_count,
+                }
+            )
+
+    if mismatched_counts:
+        raise ValueError(
+            "Signal/return bar count mismatch: "
+            f"{mismatched_counts}"
+        )
 
 
 def simulate_execution(
@@ -229,6 +326,8 @@ def simulate_execution(
 
     signals = signals.dropna(subset=["bar_index"])
     returns = returns.dropna(subset=["bar_index"])
+
+    validate_signal_return_coverage(signals=signals, returns=returns)
 
     symbols = sorted(signals["symbol"].unique())
     current_weights = {symbol: 0.0 for symbol in symbols}
@@ -468,6 +567,7 @@ def main() -> None:
     args = parse_args()
 
     payload = load_payload(args.payload)
+    selected_models = get_selected_models_from_payload(payload)
     signals = payload_to_dataframe(payload)
 
     run_dir = find_latest_training_run()
@@ -475,11 +575,15 @@ def main() -> None:
     returns = load_symbol_returns(
         run_dir=run_dir,
         signals=signals,
-        selected_models=SELECTED_MODELS,
+        selected_models=selected_models,
     )
 
+    validate_signal_return_coverage(signals=signals, returns=returns)
+
     print_header("RETURN ALIGNMENT CHECK")
-    print("Signal bar_index range:")
+    print("Selected models from payload:")
+    print(pd.Series(selected_models).to_string())
+    print("\nSignal bar_index range:")
     print(signals.groupby("symbol")["bar_index"].agg(["min", "max", "count"]).to_string())
     print("\nReturn bar_index range:")
     print(returns.groupby("symbol")["bar_index"].agg(["min", "max", "count"]).to_string())
