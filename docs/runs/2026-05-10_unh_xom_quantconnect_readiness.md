@@ -655,7 +655,7 @@ The dynamic signal file loaded successfully:
 Loaded dynamic signal payload from Object Store key: unh_xom_dynamic_signals_250marketbars.json
 UNH | loaded signal rows: 250
 XOM | loaded signal rows: 250
-````
+```
 
 The signal timestamps aligned directly with LEAN hourly bars:
 
@@ -721,3 +721,137 @@ The intended longer historical evaluation did not complete because QuantConnect 
 Passed: market-hour signal timestamps aligned with LEAN bars.
 
 Blocked: QuantConnect run only processed Feb 10 data despite the March 20 end date, so longer historical behavior was not evaluated.
+
+---
+
+## Addendum — Local Mark-to-Market Dynamic Signal Execution Simulation
+
+After the QuantConnect data availability check showed that LEAN only supplied one trading day of UNH/XOM hourly bars, a local mark-to-market dynamic signal execution simulation was created and run.
+
+The purpose of this test was to evaluate the full 250-market-bar UNH/XOM dynamic signal payload locally, using saved prediction compatibility files for close-price returns.
+
+Script:
+
+`src/simulate_dynamic_signal_execution.py`
+
+Payload:
+
+`quantconnect/test_payloads/unh_xom_dynamic_signals_250marketbars.json`
+
+Training run used:
+
+`reports/backtests/ppo_walkforward_results_20260509_172626`
+
+## Alignment Method
+
+The simulator aligns the dynamic signal payload to return rows by per-symbol `bar_index`, rather than timestamp lookup.
+
+This avoids timezone/type mismatches between:
+
+- synthetic LEAN payload timestamps, and
+- original historical timestamps from the saved prediction compatibility files.
+
+Alignment check:
+
+```text
+Signal bar_index range:
+        min  max  count
+symbol                 
+UNH       0  249    250
+XOM       0  249    250
+
+Return bar_index range:
+        min  max  count
+symbol                 
+UNH       0  249    250
+XOM       0  249    250
+```
+
+The first payload timestamps also matched by symbol:
+
+```text
+Signal first timestamps:
+symbol
+UNH   2026-02-10 10:00:00+00:00
+XOM   2026-02-10 10:00:00+00:00
+
+Return first payload timestamps:
+symbol
+UNH   2026-02-10 10:00:00+00:00
+XOM   2026-02-10 10:00:00+00:00
+```
+
+## Simulation Logic
+
+At each market-bar index, the simulator applies:
+
+1. Mark-to-market PnL using the previous bar's target weights.
+2. Rebalancing into the current bar's target weights.
+3. Transaction costs based on notional traded.
+
+This avoids lookahead bias because the current bar's return is applied using the weight already held from the previous bar.
+
+## Result Summary
+
+| Metric                  |     Result |
+| ----------------------- | ---------: |
+| Starting equity         | 100,000.00 |
+| Final equity            | 107,004.06 |
+| Net PnL                 |   7,004.06 |
+| Net return              |      7.00% |
+| Gross PnL before costs  |   7,456.44 |
+| Total transaction costs |     452.39 |
+| Total turnover          |     8.4841 |
+| Trade events            |         46 |
+| Max drawdown            |      6.59% |
+| Sharpe estimate         |       2.78 |
+| Simulation rows         |        250 |
+
+## Output Files
+
+The simulator saved:
+
+```text
+reports/dynamic_signal_execution/unh_xom_dynamic_signals_250marketbars_mtm_execution_summary.csv
+reports/dynamic_signal_execution/unh_xom_dynamic_signals_250marketbars_mtm_equity_curve.csv
+reports/dynamic_signal_execution/unh_xom_dynamic_signals_250marketbars_mtm_trade_ledger.csv
+```
+
+These files are local report artifacts and may be ignored by Git depending on `.gitignore`.
+
+## Interpretation
+
+This test passed as a local longer-window execution-aware simulation.
+
+Confirmed:
+
+| Check                                           | Status |
+| ----------------------------------------------- | ------ |
+| Dynamic signal payload loaded                   | Passed |
+| 250 UNH signal rows loaded                      | Passed |
+| 250 XOM signal rows loaded                      | Passed |
+| Return rows aligned by bar index                | Passed |
+| Transaction-cost simulation worked              | Passed |
+| Mark-to-market PnL simulation worked            | Passed |
+| Longer-window local result positive after costs | Passed |
+
+## Current Status
+
+QuantConnect remains useful for validating:
+
+* Object Store ingestion
+* artifact loading
+* signal parsing
+* timestamp alignment
+* order-routing behavior
+
+Local/VS Code is currently better for longer-window UNH/XOM evaluation because QuantConnect only supplied one day of hourly bars for these symbols in the tested setup.
+
+## Next Recommended Step
+
+The next recommended step is to create a short comparison table between:
+
+1. original PPO walkforward results,
+2. execution realism analysis,
+3. QuantConnect one-day dynamic signal test, and
+4. local mark-to-market dynamic signal simulation.
