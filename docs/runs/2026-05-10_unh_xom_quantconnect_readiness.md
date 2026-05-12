@@ -899,3 +899,192 @@ The original walkforward and execution-realism results remain strong. QuantConne
 UNH and XOM remain the current lead candidates for continued validation.
 
 QuantConnect should continue to be used for integration-path testing, while local/VS Code should remain the main environment for longer-window execution-aware evaluation until the QuantConnect data limitation is resolved. 
+
+## Addendum — Four-Ticker Selected Dynamic Signal Simulation
+
+A generalized four-ticker dynamic signal payload was created and tested locally using the mark-to-market execution simulator.
+
+This test expands the prior UNH/XOM-only simulation to a selected four-ticker validation set:
+
+- AAPL
+- PFE
+- UNH
+- XOM
+
+The purpose was to verify that the dynamic signal export and local execution simulator can scale beyond the original two-symbol test while still:
+
+- loading the correct prediction compatibility files,
+- aligning returns correctly,
+- applying transaction costs, and
+- producing mark-to-market portfolio results.
+
+---
+
+## Scripts
+
+### Exporter
+
+```text
+src/export_selected_dynamic_lean_signals.py
+```
+
+### Simulator
+
+```text
+src/simulate_dynamic_signal_execution.py
+```
+
+### Payload
+
+```text
+quantconnect/test_payloads/selected_dynamic_signals_4ticker_250marketbars.json
+```
+
+### Output Files
+
+```text
+reports/dynamic_signal_execution/selected_dynamic_signals_4ticker_250marketbars_mtm_execution_summary.csv
+reports/dynamic_signal_execution/selected_dynamic_signals_4ticker_250marketbars_mtm_equity_curve.csv
+reports/dynamic_signal_execution/selected_dynamic_signals_4ticker_250marketbars_mtm_trade_ledger.csv
+```
+
+---
+
+## Selected Models
+
+The payload selected the following model prefixes:
+
+```text
+AAPL    ppo_AAPL_window1
+PFE     ppo_PFE_window1
+UNH     ppo_UNH_window1
+XOM     ppo_XOM_window2
+```
+
+The selected models were read directly from the payload via:
+
+```python
+payload["selected_models"]
+```
+
+rather than being hardcoded in the simulator.
+
+This fixed the earlier issue where the simulator only loaded UNH/XOM return rows even when the four-ticker payload contained AAPL, PFE, UNH, and XOM signals.
+
+---
+
+## Alignment Check
+
+The final successful run confirmed full signal and return coverage for all four symbols.
+
+### Signal bar index range
+
+```text
+        min  max  count
+symbol
+AAPL      0  249    250
+PFE       0  249    250
+UNH       0  249    250
+XOM       0  249    250
+```
+
+### Return bar index range
+
+```text
+        min  max  count
+symbol
+AAPL      0  249    250
+PFE       0  249    250
+UNH       0  249    250
+XOM       0  249    250
+```
+
+The simulator also confirmed:
+
+```text
+Signal rows: 1000
+Return rows: 1000
+```
+
+This confirms that all four symbols had:
+
+- 250 signal rows, and
+- 250 aligned return rows.
+
+---
+
+## Four-Ticker Simulation Result
+
+| Metric | Result |
+|---|---|
+| Starting equity | 100,000.00 |
+| Final equity | 108,909.18 |
+| Net PnL | 8,909.18 |
+| Net return | 8.91% |
+| Gross PnL before costs | 10,715.31 |
+| Total transaction costs | 1,806.12 |
+| Total turnover | 33.3929 |
+| Trade events | 184 |
+| Max drawdown | 6.49% |
+| Sharpe estimate | 3.40 |
+| Simulation rows | 250 |
+
+---
+
+## Comparison to UNH/XOM-Only Simulation
+
+| Simulation | Final Equity | Net Return | Max Drawdown | Sharpe Estimate | Trade Events |
+|---|---|---|---|---|---|
+| UNH/XOM only | 107,004.06 | 7.00% | 6.59% | 2.78 | 46 |
+| Four-ticker selected set | 108,909.18 | 8.91% | 6.49% | 3.40 | 184 |
+
+---
+
+## Interpretation
+
+The four-ticker selected dynamic signal simulation passed.
+
+The result improved versus the prior UNH/XOM-only local simulation:
+
+- higher final equity,
+- higher net return,
+- slightly lower maximum drawdown,
+- higher Sharpe estimate, and
+- broader symbol coverage.
+
+The primary tradeoff was higher turnover and more trade events, mostly because AAPL introduced more frequent weight changes while PFE remained largely inactive (`HOLD`) within the signal payload.
+
+This test confirms that the local mark-to-market simulator can now generalize from the original UNH/XOM proof-of-concept to a broader selected validation set.
+
+---
+
+## Current Conclusion
+
+The selected four-ticker set passed the local execution-aware validation checkpoint.
+
+### Validation Status
+
+| Check | Status |
+|---|---|
+| Payload generated for four selected tickers | Passed |
+| Selected model prefixes read from payload | Passed |
+| Signal rows loaded for AAPL/PFE/UNH/XOM | Passed |
+| Return rows loaded for AAPL/PFE/UNH/XOM | Passed |
+| Bar-index alignment worked for all symbols | Passed |
+| Transaction-cost simulation worked | Passed |
+| Mark-to-market PnL simulation worked | Passed |
+| Result remained positive after costs | Passed |
+
+---
+
+## Next Recommended Step
+
+The next recommended step is to update the validation comparison helper so it includes the new four-ticker selected dynamic signal simulation alongside:
+
+1. original PPO walkforward results,
+2. execution realism analysis,
+3. QuantConnect one-day dynamic signal test,
+4. UNH/XOM local mark-to-market simulation, and
+5. four-ticker local mark-to-market simulation.
+
+After that, the project can decide whether to expand from four tickers to a broader selected universe rather than jumping directly to all 53 tickers.
