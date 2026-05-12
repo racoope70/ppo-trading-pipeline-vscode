@@ -855,3 +855,47 @@ The next recommended step is to create a short comparison table between:
 2. execution realism analysis,
 3. QuantConnect one-day dynamic signal test, and
 4. local mark-to-market dynamic signal simulation.
+
+---
+
+## Addendum — Reproducible UNH/XOM Validation Comparison Summary
+
+A comparison helper script was created to summarize the main validation stages for the selected UNH/XOM PPO candidates.
+
+Script:
+
+`src/summarize_unh_xom_validation.py`
+
+Output:
+
+`reports/validation_summary/unh_xom_validation_comparison.csv`
+
+The script compares:
+
+1. original PPO walkforward results,
+2. execution-realism analysis under the moderate 5 bps scenario,
+3. QuantConnect one-day dynamic signal test, and
+4. local mark-to-market dynamic signal simulation.
+
+The comparison confirmed the following key results:
+
+| Validation Stage | Scope | Final Equity | Net Return | Sharpe Estimate | Max Drawdown |
+|---|---|---:|---:|---:|---:|
+| Original PPO walkforward | UNH | 178,521.03 | 78.52% | 0.735 | 12.91% |
+| Original PPO walkforward | XOM | 184,988.37 | 84.99% | 0.637 | 12.16% |
+| Execution realism, 5 bps | UNH | 172,278.60 | 72.28% | 1.661 | 12.90% |
+| Execution realism, 5 bps | XOM | 153,250.09 | 53.25% | 1.105 | 11.72% |
+| QuantConnect one-day signal test | UNH/XOM | 100,279.97 | 0.28% | N/A | N/A |
+| Local MTM dynamic signal simulation | UNH/XOM | 107,004.06 | 7.00% | 2.782 | 6.59% |
+
+## Interpretation
+
+The comparison table confirms that the UNH/XOM validation path remains consistent across research, execution-realism analysis, QuantConnect signal plumbing, and local mark-to-market simulation.
+
+The original walkforward and execution-realism results remain strong. QuantConnect successfully validates signal ingestion and order plumbing, but its UNH/XOM hourly data availability limits longer testing in the current setup. The local mark-to-market simulation provides the better current longer-window validation path for these symbols.
+
+## Current Conclusion
+
+UNH and XOM remain the current lead candidates for continued validation.
+
+QuantConnect should continue to be used for integration-path testing, while local/VS Code should remain the main environment for longer-window execution-aware evaluation until the QuantConnect data limitation is resolved. 
