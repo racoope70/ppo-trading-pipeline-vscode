@@ -19,6 +19,10 @@ Notes:
     To avoid lookahead bias:
     - Per-bar return is applied using weights held from the previous timestamp.
     - Then transaction costs are applied for changing into the new target weights.
+
+    This version aligns signals and returns by per-symbol row order, not by
+    timestamp dictionary lookup. That avoids timezone/type mismatches between
+    synthetic LEAN timestamps and local pandas timestamps.
 """
 
 from __future__ import annotations
@@ -96,12 +100,18 @@ def payload_to_dataframe(payload: dict) -> pd.DataFrame:
     df["signal"] = df["signal"].astype(str).str.upper()
     df["action"] = pd.to_numeric(df["action"], errors="coerce").fillna(0.0)
     df["confidence"] = pd.to_numeric(df["confidence"], errors="coerce").fillna(0.0)
-    df["target_weight"] = pd.to_numeric(df["target_weight"], errors="coerce").fillna(0.0)
+    df["target_weight"] = pd.to_numeric(
+        df["target_weight"],
+        errors="coerce",
+    ).fillna(0.0)
 
     if df["timestamp"].isna().any():
         raise ValueError("One or more payload timestamps could not be parsed.")
 
-    return df.sort_values(["timestamp", "symbol"]).reset_index(drop=True)
+    df = df.sort_values(["symbol", "timestamp"]).reset_index(drop=True)
+    df["bar_index"] = df.groupby("symbol").cumcount()
+
+    return df.sort_values(["bar_index", "symbol"]).reset_index(drop=True)
 
 
 def load_symbol_returns(
@@ -112,8 +122,8 @@ def load_symbol_returns(
     """Load Close returns from prediction compatibility CSVs.
 
     The payload timestamps are synthetic market-bar timestamps created for
-    QuantConnect/LEAN alignment. The prediction CSVs have their original
-    historical Datetime values. For local simulation, we align by row order:
+    QuantConnect/LEAN alignment. The prediction CSVs have original historical
+    Datetime values. For local simulation, we align by per-symbol row order:
     the last N prediction rows are matched to the N signal rows per symbol.
     """
     frames = []
@@ -121,8 +131,9 @@ def load_symbol_returns(
     for symbol, prefix in selected_models.items():
         signal_rows = (
             signals[signals["symbol"] == symbol]
-            .sort_values("timestamp")
+            .sort_values("bar_index")
             .reset_index(drop=True)
+            .copy()
         )
 
         if signal_rows.empty:
@@ -143,7 +154,8 @@ def load_symbol_returns(
 
         if missing_columns:
             raise ValueError(
-                f"{prediction_path} missing required columns: {sorted(missing_columns)}"
+                f"{prediction_path} missing required columns: "
+                f"{sorted(missing_columns)}"
             )
 
         prices = prices.copy()
@@ -153,7 +165,6 @@ def load_symbol_returns(
             errors="coerce",
         )
         prices["close"] = pd.to_numeric(prices["Close"], errors="coerce")
-
         prices = prices.dropna(subset=["source_datetime", "close"])
 
         if len(prices) < len(signal_rows):
@@ -163,16 +174,20 @@ def load_symbol_returns(
             )
 
         aligned_prices = prices.tail(len(signal_rows)).reset_index(drop=True)
-        aligned_prices["symbol"] = symbol
-        aligned_prices["timestamp"] = signal_rows["timestamp"].values
 
-        aligned_prices["symbol_return"] = aligned_prices["close"].pct_change().fillna(0.0)
+        aligned_prices["symbol"] = symbol
+        aligned_prices["bar_index"] = signal_rows["bar_index"].to_numpy()
+        aligned_prices["payload_timestamp"] = signal_rows["timestamp"].to_numpy()
+        aligned_prices["symbol_return"] = (
+            aligned_prices["close"].pct_change().fillna(0.0)
+        )
 
         frames.append(
             aligned_prices[
                 [
-                    "timestamp",
+                    "bar_index",
                     "symbol",
+                    "payload_timestamp",
                     "source_datetime",
                     "close",
                     "symbol_return",
@@ -180,9 +195,9 @@ def load_symbol_returns(
             ]
         )
 
-    return pd.concat(frames, ignore_index=True).sort_values(
-        ["timestamp", "symbol"]
-    ).reset_index(drop=True)
+    returns = pd.concat(frames, ignore_index=True)
+
+    return returns.sort_values(["bar_index", "symbol"]).reset_index(drop=True)
 
 
 def simulate_execution(
@@ -193,41 +208,47 @@ def simulate_execution(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Simulate mark-to-market returns, target changes, and cost drag.
 
-    Order of operations at each timestamp:
+    Order of operations at each bar_index:
         1. Apply PnL from previous weights using current symbol returns.
         2. Rebalance from previous weights to current target weights.
         3. Subtract transaction costs based on notional traded.
     """
     cost_rate = total_cost_bps / 10_000.0
 
-    symbols = sorted(signals["symbol"].unique())
+    signals = signals.copy()
+    returns = returns.copy()
 
+    signals["bar_index"] = pd.to_numeric(
+        signals["bar_index"],
+        errors="coerce",
+    ).astype("Int64")
+    returns["bar_index"] = pd.to_numeric(
+        returns["bar_index"],
+        errors="coerce",
+    ).astype("Int64")
+
+    signals = signals.dropna(subset=["bar_index"])
+    returns = returns.dropna(subset=["bar_index"])
+
+    symbols = sorted(signals["symbol"].unique())
     current_weights = {symbol: 0.0 for symbol in symbols}
 
     equity = float(starting_equity)
     peak_equity = equity
 
-    signal_lookup = {
-        timestamp: group.copy()
-        for timestamp, group in signals.groupby("timestamp", sort=True)
-    }
-
-    return_lookup = {
-        timestamp: group.copy()
-        for timestamp, group in returns.groupby("timestamp", sort=True)
-    }
-
-    all_timestamps = sorted(signal_lookup.keys())
+    all_bar_indices = sorted(signals["bar_index"].dropna().unique())
 
     equity_rows = []
     trade_rows = []
 
-    for timestamp in all_timestamps:
-        signal_group = signal_lookup[timestamp]
-        return_group = return_lookup.get(timestamp)
+    for bar_index in all_bar_indices:
+        signal_group = signals[signals["bar_index"] == bar_index].copy()
+        return_group = returns[returns["bar_index"] == bar_index].copy()
 
-        if return_group is None:
-            raise ValueError(f"Missing return rows for timestamp: {timestamp}")
+        if return_group.empty:
+            raise ValueError(f"Missing return rows for bar_index: {bar_index}")
+
+        payload_timestamp = signal_group["timestamp"].min()
 
         symbol_returns = {
             str(row["symbol"]): float(row["symbol_return"])
@@ -244,7 +265,7 @@ def simulate_execution(
             for _, row in return_group.iterrows()
         }
 
-        # 1. Mark-to-market using weights held from prior timestamp.
+        # 1. Mark-to-market using weights held from prior bar.
         portfolio_return = 0.0
         pnl_by_symbol = {}
 
@@ -276,7 +297,8 @@ def simulate_execution(
             if abs_weight_change > 0.0001:
                 trade_rows.append(
                     {
-                        "timestamp": timestamp,
+                        "bar_index": int(bar_index),
+                        "timestamp": payload_timestamp,
                         "symbol": symbol,
                         "source_datetime": source_datetimes.get(symbol),
                         "close": symbol_closes.get(symbol),
@@ -309,7 +331,8 @@ def simulate_execution(
         net_exposure = sum(current_weights.values())
 
         row = {
-            "timestamp": timestamp,
+            "bar_index": int(bar_index),
+            "timestamp": payload_timestamp,
             "equity": equity,
             "portfolio_return_before_costs": portfolio_return,
             "gross_pnl_before_costs": gross_pnl,
@@ -346,10 +369,7 @@ def calculate_sharpe(equity_curve: pd.DataFrame) -> float:
     if std == 0 or pd.isna(std):
         return 0.0
 
-    # Approximate annualization for hourly market bars:
-    # 252 trading days * 7 bars per day.
     annualization = (252 * 7) ** 0.5
-
     return float((returns.mean() / std) * annualization)
 
 
@@ -457,6 +477,16 @@ def main() -> None:
         signals=signals,
         selected_models=SELECTED_MODELS,
     )
+
+    print_header("RETURN ALIGNMENT CHECK")
+    print("Signal bar_index range:")
+    print(signals.groupby("symbol")["bar_index"].agg(["min", "max", "count"]).to_string())
+    print("\nReturn bar_index range:")
+    print(returns.groupby("symbol")["bar_index"].agg(["min", "max", "count"]).to_string())
+    print("\nSignal first timestamps:")
+    print(signals.groupby("symbol")["timestamp"].min().to_string())
+    print("\nReturn first payload timestamps:")
+    print(returns.groupby("symbol")["payload_timestamp"].min().to_string())
 
     equity_curve, trade_ledger = simulate_execution(
         signals=signals,
