@@ -502,6 +502,8 @@ This should use a signal file generated outside QuantConnect from the VS Code PP
 
 This is preferred before attempting live PPO model inference inside QuantConnect because it keeps model execution, feature generation, and trading simulation separated for debugging.
 
+---
+
 ## Addendum — Full LEAN Backtest With Precomputed Dynamic Signals
 
 A full QuantConnect/LEAN backtest was completed using a precomputed dynamic PPO signal file for UNH and XOM.
@@ -1090,8 +1092,7 @@ The next recommended step is to update the validation comparison helper so it in
 After that, the project can decide whether to expand from four tickers to a broader selected universe rather than jumping directly to all 53 tickers.
 
 
-
-[Is this a right .md markup any formatting issues] ## Addendum — Generalized Selected Dynamic Validation Comparison Summary
+## Addendum — Generalized Selected Dynamic Validation Comparison Summary
 
 A generalized validation comparison helper was created to summarize the full selected-ticker validation path in one reproducible CSV.
 
@@ -1180,94 +1181,3 @@ Current best engineering conclusion:
 ## Next Recommended Step
 
 The next recommended step is to decide whether to expand from four tickers to a larger selected validation set, such as 8–10 tickers, using the same generalized dynamic signal export, local mark-to-market simulator, and validation comparison summary workflow.
-
-
-##Validation Comparison Summary
-
-A generalized validation comparison helper was created to summarize the full selected-ticker validation path in one reproducible CSV.
-
-Script:
-
-`src/summarize_selected_dynamic_validation.py`
-
-Output:
-
-`reports/validation_summary/selected_dynamic_validation_comparison.csv`
-
-This script generalizes the earlier UNH/XOM-only comparison summary and now includes both the original two-ticker validation path and the expanded four-ticker selected dynamic signal simulation.
-
-## Validation Stages Included
-
-The comparison summary includes:
-
-1. original PPO walkforward results,
-2. execution-realism analysis under the moderate 5 bps scenario,
-3. QuantConnect one-day dynamic signal test,
-4. UNH/XOM local mark-to-market dynamic signal simulation, and
-5. four-ticker selected local mark-to-market dynamic signal simulation.
-
-## Selected Four-Ticker Models
-
-The generalized summary reads selected model prefixes from:
-
-`quantconnect/test_payloads/selected_dynamic_signals_4ticker_250marketbars.json`
-
-Selected models:
-
-```text
-AAPL    ppo_AAPL_window1
-PFE     ppo_PFE_window1
-UNH     ppo_UNH_window1
-XOM     ppo_XOM_window2
-```
-
-## Key Comparison Results
-
-| Validation Stage                          | Scope            | Final Equity | Net Return | Sharpe Estimate | Max Drawdown | Trade Events |
-| ----------------------------------------- | ---------------- | -----------: | ---------: | --------------: | -----------: | -----------: |
-| UNH/XOM local MTM simulation              | UNH/XOM          |   107,004.06 |      7.00% |            2.78 |        6.59% |           46 |
-| Four-ticker selected local MTM simulation | AAPL/PFE/UNH/XOM |   108,909.18 |      8.91% |            3.40 |        6.49% |          184 |
-
-The generalized comparison confirmed that the four-ticker selected local simulation improved final equity, net return, and Sharpe estimate versus the UNH/XOM-only simulation, while keeping max drawdown slightly lower. The tradeoff was higher turnover and more trade events.
-
-## Four-Ticker Local MTM Simulation Result
-| Metric                  |     Result |
-| ----------------------- | ---------: |
-| Starting equity         | 100,000.00 |
-| Final equity            | 108,909.18 |
-| Net PnL                 |   8,909.18 |
-| Net return              |      8.91% |
-| Gross PnL before costs  |  10,715.31 |
-| Total transaction costs |   1,806.12 |
-| Total turnover          |    33.3929 |
-| Trade events            |        184 |
-| Max drawdown            |      6.49% |
-| Sharpe estimate         |       3.40 |
-| Simulation rows         |        250 |
-
-## Interpretation
-
-This comparison summary confirms that the selected-ticker validation process is now reproducible from scripts rather than being only manually documented.
-
-The project now has a clean validation trail from:
-
-* original model training,
-* execution realism adjustment,
-* QuantConnect signal ingestion and order plumbing,
-* UNH/XOM local execution-aware simulation, and
-* generalized four-ticker local execution-aware simulation.
-
-## Current Conclusion
-
-The selected four-ticker validation set remains positive after estimated transaction costs and mark-to-market simulation.
-
-Current best engineering conclusion:
-
-* QuantConnect is useful for Object Store ingestion, artifact checks, timestamp checks, and order-path validation.
-* Local/VS Code simulation remains the better environment for longer-window evaluation until the QuantConnect data availability limitation is resolved.
-* The four-ticker selected set should be the next baseline before expanding to a broader selected universe.
-
-## Next Recommended Step
-
-The next recommended step is to decide whether to expand from four tickers to a larger selected validation set, such as 8–10 tickers, using the same generalized dynamic signal export, local mark-to-market simulator, and validation comparison summary workflow.
-
