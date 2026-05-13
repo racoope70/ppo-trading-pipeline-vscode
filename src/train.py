@@ -4,10 +4,18 @@ This script is the local VS Code replacement for the PPO walk-forward training
 section of the original notebook. It loads the prepared dataset, trains PPO
 models per ticker/window, saves model artifacts, saves predictions, and writes
 summary results to local report folders.
+
+Examples:
+    python -m src.train
+
+    python -m src.train --tickers AAPL PFE UNH XOM AMD MRK
+
+    python -m src.train --tickers AAPL,PFE,UNH,XOM,AMD,MRK
 """
 
 from __future__ import annotations
 
+import argparse
 import gc
 import heapq
 import logging
@@ -28,6 +36,7 @@ from src.artifacts import (
     required_artifacts_exist,
     save_quantconnect_model,
 )
+from src.cli_utils import parse_ticker_args
 from src.config import (
     DATA_PATH,
     ENABLE_SENTIMENT,
@@ -54,6 +63,36 @@ from src.training_utils import (
     record_skips_global,
     summarize_skip_log,
 )
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for PPO training."""
+    parser = argparse.ArgumentParser(
+        description="Train PPO walk-forward models for selected symbols."
+    )
+
+    parser.add_argument(
+        "--tickers",
+        nargs="*",
+        default=None,
+        help=(
+            "Optional ticker override. Supports either space-separated values "
+            "or comma-separated values. Examples: "
+            "--tickers AAPL PFE UNH or --tickers AAPL,PFE,UNH"
+        ),
+    )
+
+    return parser.parse_args()
+
+
+def resolve_symbols(raw_tickers: list[str] | None) -> list[str]:
+    """Return CLI tickers when supplied, otherwise configured default symbols."""
+    cli_symbols = parse_ticker_args(raw_tickers)
+
+    if cli_symbols:
+        return cli_symbols
+
+    return list(SYMBOLS)
 
 
 def load_training_dataset(path: Path = DATA_PATH) -> pd.DataFrame:
@@ -658,6 +697,9 @@ def run_parallel_tickers(
 
 def main() -> None:
     """Command-line entry point for local PPO training."""
+    args = parse_args()
+    symbols = resolve_symbols(args.tickers)
+
     warnings.filterwarnings("ignore", category=UserWarning, module="gymnasium")
     warnings.filterwarnings("ignore", message=".*Gym has been unmaintained.*")
 
@@ -680,7 +722,7 @@ def main() -> None:
     logging.info("Loading training dataset from %s", DATA_PATH)
 
     df = load_training_dataset(DATA_PATH)
-    valid_symbols = get_valid_symbols(df, SYMBOLS)
+    valid_symbols = get_valid_symbols(df, symbols)
 
     if not valid_symbols:
         logging.warning("No valid symbols available for training.")
@@ -691,7 +733,7 @@ def main() -> None:
         logging.info("Running in TEST_MODE on symbols: %s", valid_symbols)
     else:
         output_path = summary_path
-        logging.info("Running full training on %s symbols.", len(valid_symbols))
+        logging.info("Running full training on %s symbols: %s", len(valid_symbols), valid_symbols)
 
     summary_results = run_parallel_tickers(
         df=df,
@@ -711,4 +753,4 @@ def main() -> None:
     summarize_skip_log(skip_log_path)
 
 if __name__ == "__main__":
-    main()
+    main() 
