@@ -3,10 +3,18 @@
 This script replaces the original Colab data-preparation block. It downloads
 raw market data, computes features, applies labels, performs a time-based
 train/validation split, and saves local CSV/parquet outputs.
+
+Examples:
+    python -m src.prepare_data
+
+    python -m src.prepare_data --tickers AAPL PFE UNH XOM AMD MRK
+
+    python -m src.prepare_data --tickers AAPL,PFE,UNH,XOM,AMD,MRK
 """
 
 from __future__ import annotations
 
+import argparse
 import gc
 import logging
 import time
@@ -15,6 +23,7 @@ import warnings
 import pandas as pd
 import yfinance as yf
 
+from src.cli_utils import parse_ticker_args
 from src.config import (
     DATA_PATH,
     INTERVAL,
@@ -36,6 +45,49 @@ from src.features import (
     split_train_validation,
     summarize_dataset,
 )
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for data preparation."""
+    parser = argparse.ArgumentParser(
+        description="Prepare model-ready feature data for selected symbols."
+    )
+
+    parser.add_argument(
+        "--tickers",
+        nargs="*",
+        default=None,
+        help=(
+            "Optional ticker override. Supports either space-separated values "
+            "or comma-separated values. Examples: "
+            "--tickers AAPL PFE UNH or --tickers AAPL,PFE,UNH"
+        ),
+    )
+
+    parser.add_argument(
+        "--interval",
+        default=INTERVAL,
+        help=f"Bar interval to download. Default: {INTERVAL}",
+    )
+
+    parser.add_argument(
+        "--period-days",
+        type=int,
+        default=PERIOD_DAYS,
+        help=f"Number of calendar days to request. Default: {PERIOD_DAYS}",
+    )
+
+    return parser.parse_args()
+
+
+def resolve_symbols(raw_tickers: list[str] | None) -> list[str]:
+    """Return CLI tickers when supplied, otherwise configured default symbols."""
+    cli_symbols = parse_ticker_args(raw_tickers)
+
+    if cli_symbols:
+        return cli_symbols
+
+    return list(SYMBOLS)
 
 
 def prepare_feature_frames(
@@ -126,6 +178,9 @@ def save_processed_outputs(
 
 def main() -> None:
     """Run the full local data preparation pipeline."""
+    args = parse_args()
+    symbols = resolve_symbols(args.tickers)
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
@@ -136,9 +191,13 @@ def main() -> None:
 
     logging.info("yfinance version: %s", getattr(yf, "__version__", "unknown"))
     logging.info("pandas version: %s", pd.__version__)
-    logging.info("Preparing data for %s symbols.", len(SYMBOLS))
+    logging.info("Preparing data for %s symbols: %s", len(symbols), symbols)
 
-    feature_frames = prepare_feature_frames(SYMBOLS)
+    feature_frames = prepare_feature_frames(
+        symbols=symbols,
+        interval=args.interval,
+        period_days=args.period_days,
+    )
 
     if not feature_frames:
         logging.warning("No usable data found for any ticker.")
