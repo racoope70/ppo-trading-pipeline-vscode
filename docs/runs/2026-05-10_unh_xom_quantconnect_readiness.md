@@ -1181,3 +1181,194 @@ Current best engineering conclusion:
 ## Next Recommended Step
 
 The next recommended step is to decide whether to expand from four tickers to a larger selected validation set, such as 8–10 tickers, using the same generalized dynamic signal export, local mark-to-market simulator, and validation comparison summary workflow.
+
+## Addendum — Six-Ticker Quality-Filtered Dynamic Signal Simulation
+
+A six-ticker quality-filtered dynamic signal simulation was created after the broader eight-ticker test showed that adding all available candidates did not improve performance.
+
+The six-ticker set keeps only the models that passed the moderate execution-realism filter as PPO winners with positive execution edge:
+
+```text
+AAPL
+PFE
+UNH
+XOM
+AMD
+MRK
+```
+
+The following tickers were excluded from the quality-filtered set:
+
+```text
+META
+ORCL
+```
+
+These symbols were excluded because, in the eight-ticker execution-realism analysis, their moderate-scenario `Execution_Winner` was Buy & Hold rather than PPO, and their `Execution_Edge_vs_BuyHold` was negative.
+
+---
+
+## Payload
+
+Payload created:
+
+```text
+quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json
+```
+
+Command used:
+
+```bash
+python -m src.export_selected_dynamic_lean_signals \
+  --symbols AAPL,PFE,UNH,XOM,AMD,MRK \
+  --output quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json
+```
+
+Selected model prefixes:
+
+```text
+AAPL    ppo_AAPL_window1
+PFE     ppo_PFE_window1
+UNH     ppo_UNH_window1
+XOM     ppo_XOM_window2
+AMD     ppo_AMD_window3
+MRK     ppo_MRK_window1
+```
+
+Payload statistics:
+
+```text
+Signal rows: 1500
+Rows per symbol: 250
+First timestamp: 2026-02-10T10:00:00+00:00
+Last timestamp: 2026-03-31T14:00:00+00:00
+```
+
+---
+
+## Alignment Check
+
+The local simulator confirmed full signal and return coverage for all six symbols:
+
+```text
+Signal rows: 1500
+Return rows: 1500
+```
+
+Per-symbol alignment:
+
+```text
+        min  max  count
+symbol                 
+AAPL      0  249    250
+AMD       0  249    250
+MRK       0  249    250
+PFE       0  249    250
+UNH       0  249    250
+XOM       0  249    250
+```
+
+This confirms that the six-ticker payload loaded the expected selected model prefixes, prediction compatibility files, signal rows, and return rows.
+
+---
+
+## Six-Ticker Local MTM Simulation Result
+
+Simulation outputs:
+
+```text
+reports/dynamic_signal_execution/selected_dynamic_signals_6ticker_quality_250marketbars_mtm_execution_summary.csv
+reports/dynamic_signal_execution/selected_dynamic_signals_6ticker_quality_250marketbars_mtm_equity_curve.csv
+reports/dynamic_signal_execution/selected_dynamic_signals_6ticker_quality_250marketbars_mtm_trade_ledger.csv
+```
+
+| Metric                  |     Result |
+| ----------------------- | ---------: |
+| Starting equity         | 100,000.00 |
+| Final equity            | 112,982.27 |
+| Net PnL                 |  12,982.27 |
+| Net return              |     12.98% |
+| Gross PnL before costs  |  14,983.23 |
+| Total transaction costs |   2,000.96 |
+| Total turnover          |    36.8929 |
+| Trade events            |        198 |
+| Max drawdown            |      8.96% |
+| Sharpe estimate         |       3.80 |
+| Simulation rows         |        250 |
+
+---
+
+## Comparison to Prior Dynamic Signal Simulations
+
+| Simulation                            | Final Equity | Net Return | Sharpe Estimate | Max Drawdown | Trade Events |
+| ------------------------------------- | -----------: | ---------: | --------------: | -----------: | -----------: |
+| UNH/XOM local MTM                     |   107,004.06 |      7.00% |            2.78 |        6.59% |           46 |
+| Four-ticker selected local MTM        |   108,909.18 |      8.91% |            3.40 |        6.49% |          184 |
+| Eight-ticker selected local MTM       |   107,686.02 |      7.69% |            2.03 |       10.19% |          547 |
+| Six-ticker quality-filtered local MTM |   112,982.27 |     12.98% |            3.80 |        8.96% |          198 |
+
+---
+
+## Interpretation
+
+The six-ticker quality-filtered configuration currently produces the strongest local mark-to-market result.
+
+The earlier eight-ticker expansion demonstrated that the export and simulation pipeline scales mechanically, but it also showed that adding weaker candidates can reduce overall strategy quality. Relative to the four-ticker configuration, the eight-ticker set increased turnover, trade frequency, and drawdown while reducing Sharpe.
+
+Excluding META and ORCL improved the aggregate result because those models were not PPO winners under moderate execution assumptions.
+
+Compared with the four-ticker selected configuration, the six-ticker quality-filtered set produced:
+
+```text
+Higher final equity
+Higher net return
+Higher Sharpe estimate
+Moderately higher max drawdown
+Only a modest increase in trade events
+```
+
+---
+
+## Current Conclusion
+
+The current strongest validation baseline is:
+
+```text
+AAPL
+PFE
+UNH
+XOM
+AMD
+MRK
+```
+
+This six-ticker quality-filtered configuration should replace the earlier four-ticker configuration as the primary local validation baseline.
+
+Current validation status:
+
+| Check                                                            | Status |
+| ---------------------------------------------------------------- | ------ |
+| Six-ticker payload generated                                     | Passed |
+| Selected model prefixes loaded from payload                      | Passed |
+| Signal rows loaded for all six symbols                           | Passed |
+| Return rows loaded for all six symbols                           | Passed |
+| Bar-index alignment worked for all symbols                       | Passed |
+| Transaction-cost simulation worked                               | Passed |
+| Mark-to-market PnL simulation worked                             | Passed |
+| Result remained positive after costs                             | Passed |
+| Six-ticker set improved versus four-ticker and eight-ticker sets | Passed |
+
+---
+
+## Next Recommended Step
+
+Next step: update the generalized validation comparison summary script to include the six-ticker quality-filtered result.
+
+After that, the project should treat the six-ticker configuration as the primary validation baseline and avoid expanding to additional tickers unless they pass the same execution-quality filter:
+
+```text
+Execution_Winner == PPO
+Execution_Edge_vs_BuyHold > 0
+```
+
+A future engineering improvement should add CLI ticker overrides to `prepare_data.py` and `train.py`, allowing broader validation runs without manually editing `src/config.py`.
