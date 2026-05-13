@@ -8,13 +8,18 @@ Purpose:
     3. QuantConnect one-day UNH/XOM dynamic signal test
     4. UNH/XOM local mark-to-market dynamic signal simulation
     5. Four-ticker selected local mark-to-market dynamic signal simulation
+    6. Six-ticker quality-filtered local mark-to-market dynamic signal simulation
 
 Output:
     reports/validation_summary/selected_dynamic_validation_comparison.csv
 
 Notes:
     This generalizes the earlier UNH/XOM-only comparison summary.
-    It reads the selected model prefixes from the selected dynamic payload:
+
+    The current primary baseline is the six-ticker quality-filtered payload:
+        quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json
+
+    The four-ticker result is retained for comparison context:
         quantconnect/test_payloads/selected_dynamic_signals_4ticker_250marketbars.json
 """
 
@@ -30,8 +35,12 @@ BACKTESTS_DIR = Path("reports/backtests")
 DYNAMIC_EXECUTION_DIR = Path("reports/dynamic_signal_execution")
 OUTPUT_DIR = Path("reports/validation_summary")
 
-SELECTED_PAYLOAD_PATH = Path(
+SELECTED_4TICKER_PAYLOAD_PATH = Path(
     "quantconnect/test_payloads/selected_dynamic_signals_4ticker_250marketbars.json"
+)
+
+SELECTED_6TICKER_PAYLOAD_PATH = Path(
+    "quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json"
 )
 
 UNH_XOM_MTM_SUMMARY_PATH = (
@@ -42,6 +51,11 @@ UNH_XOM_MTM_SUMMARY_PATH = (
 SELECTED_4TICKER_MTM_SUMMARY_PATH = (
     DYNAMIC_EXECUTION_DIR
     / "selected_dynamic_signals_4ticker_250marketbars_mtm_execution_summary.csv"
+)
+
+SELECTED_6TICKER_MTM_SUMMARY_PATH = (
+    DYNAMIC_EXECUTION_DIR
+    / "selected_dynamic_signals_6ticker_quality_250marketbars_mtm_execution_summary.csv"
 )
 
 QC_ONE_DAY_RESULT = {
@@ -89,7 +103,7 @@ def load_csv(path: Path, description: str) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
-def load_selected_payload(path: Path = SELECTED_PAYLOAD_PATH) -> dict:
+def load_selected_payload(path: Path) -> dict:
     if not path.exists():
         raise FileNotFoundError(
             f"Missing selected dynamic payload: {path}\n"
@@ -100,10 +114,10 @@ def load_selected_payload(path: Path = SELECTED_PAYLOAD_PATH) -> dict:
         payload = json.load(file)
 
     if "selected_models" not in payload:
-        raise ValueError("Selected payload missing selected_models.")
+        raise ValueError(f"Selected payload missing selected_models: {path}")
 
     if "selection_metadata" not in payload:
-        raise ValueError("Selected payload missing selection_metadata.")
+        raise ValueError(f"Selected payload missing selection_metadata: {path}")
 
     return payload
 
@@ -131,6 +145,17 @@ def selected_payload_models(payload: dict) -> dict[str, dict]:
         }
 
     return output
+
+
+def selected_prefix_text(selected_models: dict[str, dict]) -> str:
+    return " + ".join(
+        selected_models[symbol]["prefix"]
+        for symbol in sorted(selected_models.keys())
+    )
+
+
+def selected_scope_text(selected_models: dict[str, dict]) -> str:
+    return "/".join(sorted(selected_models.keys()))
 
 
 def original_walkforward_rows(
@@ -313,18 +338,16 @@ def build_comparison() -> pd.DataFrame:
         "execution realism analysis",
     )
 
-    selected_payload = load_selected_payload()
-    selected_models = selected_payload_models(selected_payload)
+    selected_4ticker_payload = load_selected_payload(SELECTED_4TICKER_PAYLOAD_PATH)
+    selected_6ticker_payload = load_selected_payload(SELECTED_6TICKER_PAYLOAD_PATH)
 
-    selected_prefix_text = " + ".join(
-        selected_models[symbol]["prefix"]
-        for symbol in sorted(selected_models.keys())
-    )
+    selected_4ticker_models = selected_payload_models(selected_4ticker_payload)
+    selected_6ticker_models = selected_payload_models(selected_6ticker_payload)
 
     rows = []
 
-    rows.extend(original_walkforward_rows(summary, selected_models))
-    rows.extend(execution_realism_rows(execution, selected_models))
+    rows.extend(original_walkforward_rows(summary, selected_6ticker_models))
+    rows.extend(execution_realism_rows(execution, selected_6ticker_models))
     rows.append(quantconnect_one_day_row())
 
     rows.append(
@@ -345,13 +368,31 @@ def build_comparison() -> pd.DataFrame:
         mtm_summary_row(
             path=SELECTED_4TICKER_MTM_SUMMARY_PATH,
             stage="Four-ticker selected local mark-to-market dynamic signal simulation",
-            scope="/".join(sorted(selected_models.keys())),
-            selected_prefix=selected_prefix_text,
+            scope=selected_scope_text(selected_4ticker_models),
+            selected_prefix=selected_prefix_text(selected_4ticker_models),
             window="250 market bars",
             notes=(
-                "Generalized selected-ticker local simulation using payload-selected "
+                "Four-ticker selected local simulation using payload-selected "
                 "model prefixes, bar_index alignment, saved Close returns, and "
                 "5 bps transaction costs."
+            ),
+        )
+    )
+
+    rows.append(
+        mtm_summary_row(
+            path=SELECTED_6TICKER_MTM_SUMMARY_PATH,
+            stage=(
+                "Six-ticker quality-filtered local mark-to-market "
+                "dynamic signal simulation"
+            ),
+            scope=selected_scope_text(selected_6ticker_models),
+            selected_prefix=selected_prefix_text(selected_6ticker_models),
+            window="250 market bars",
+            notes=(
+                "Current primary baseline. Six-ticker quality-filtered local "
+                "simulation using payload-selected model prefixes, bar_index "
+                "alignment, saved Close returns, and 5 bps transaction costs."
             ),
         )
     )
