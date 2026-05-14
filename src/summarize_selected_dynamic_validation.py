@@ -25,6 +25,7 @@ Notes:
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -82,6 +83,20 @@ QC_ONE_DAY_RESULT = {
     ),
 }
 
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for validation summary generation."""
+    parser = argparse.ArgumentParser(
+        description="Create selected dynamic validation comparison summary."
+    )
+
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=OUTPUT_DIR,
+        help=f"Directory for selected_dynamic_validation_comparison.csv. Default: {OUTPUT_DIR}",
+    )
+
+    return parser.parse_args()
 
 def find_latest_training_run() -> Path:
     summaries = sorted(
@@ -408,11 +423,14 @@ def build_comparison() -> pd.DataFrame:
 
 
 def main() -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    args = parse_args()
+    output_dir = args.output_dir
+
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     comparison = build_comparison()
 
-    output_path = OUTPUT_DIR / "selected_dynamic_validation_comparison.csv"
+    output_path = output_dir / "selected_dynamic_validation_comparison.csv"
     comparison.to_csv(output_path, index=False)
 
     print("=" * 80)
