@@ -1,7 +1,7 @@
 """Run a deeper execution-realism review for PPO walk-forward predictions.
 
-This script uses existing *_predictions_compat.csv files from the newest PPO
-training run. It does not retrain models.
+This script uses existing *_predictions_compat.csv files from a PPO training run.
+It does not retrain models.
 
 It simulates a simple target-position equity curve using the PPO Action column,
 then applies execution-friction assumptions:
@@ -15,10 +15,17 @@ answers a more realistic question than the raw backtest:
 
     Does the PPO window still look attractive after position changes,
     execution friction, and cost-adjusted drawdown?
+
+Examples:
+    python -m src.analyze_execution_realism
+
+    python -m src.analyze_execution_realism \
+      --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined
 """
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -37,6 +44,26 @@ COST_SCENARIOS = [
 ]
 
 
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Run execution-realism analysis for PPO prediction files."
+    )
+
+    parser.add_argument(
+        "--run-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Optional PPO run directory containing summary_test_mode.csv and "
+            "*_predictions_compat.csv files. If omitted, the newest run under "
+            "reports/backtests is used."
+        ),
+    )
+
+    return parser.parse_args()
+
+
 def find_latest_summary() -> Path:
     """Return the newest summary_test_mode.csv from PPO walk-forward runs."""
     summaries = sorted(
@@ -50,6 +77,31 @@ def find_latest_summary() -> Path:
         )
 
     return summaries[-1]
+
+
+def resolve_summary_path(run_dir: Path | None) -> Path:
+    """Return summary_test_mode.csv from run_dir or from the latest run."""
+    if run_dir is None:
+        return find_latest_summary()
+
+    run_dir = run_dir.expanduser()
+
+    if run_dir.is_file():
+        if run_dir.name != "summary_test_mode.csv":
+            raise ValueError(
+                "--run-dir was given as a file, but it must be summary_test_mode.csv. "
+                f"Received: {run_dir}"
+            )
+        return run_dir
+
+    summary_path = run_dir / "summary_test_mode.csv"
+
+    if not summary_path.exists():
+        raise FileNotFoundError(
+            f"summary_test_mode.csv not found in run directory: {run_dir}"
+        )
+
+    return summary_path
 
 
 def infer_ticker_window(file_path: Path) -> tuple[str, str, str]:
@@ -342,14 +394,21 @@ def add_summary_context(execution_df: pd.DataFrame, summary_df: pd.DataFrame) ->
 
 
 def main() -> None:
-    """Run execution-realism analysis for the newest PPO training run."""
-    summary_path = find_latest_summary()
+    """Run execution-realism analysis for the requested PPO training run."""
+    args = parse_args()
+
+    summary_path = resolve_summary_path(args.run_dir)
     run_dir = summary_path.parent
 
     print("=" * 80)
     print("PPO EXECUTION REALISM ANALYSIS")
     print("=" * 80)
-    print("Using newest summary:", summary_path)
+
+    if args.run_dir is None:
+        print("Using newest summary:", summary_path)
+    else:
+        print("Using requested summary:", summary_path)
+
     print("Using run folder:", run_dir)
 
     summary = load_summary(summary_path)
@@ -392,7 +451,10 @@ def main() -> None:
     print("\nExecution realism summary:")
     print(
         merged[display_cols]
-        .sort_values(["Scenario", "Ticker", "Execution_Edge_vs_BuyHold"], ascending=[True, True, False])
+        .sort_values(
+            ["Scenario", "Ticker", "Execution_Edge_vs_BuyHold"],
+            ascending=[True, True, False],
+        )
         .to_string(index=False)
     )
 
