@@ -1,7 +1,7 @@
 """Export selected PPO dynamic signals into a LEAN-friendly JSON file.
 
 Purpose:
-    - Read the latest execution_realism_analysis.csv.
+    - Read execution_realism_analysis.csv from the requested run directory, or from the newest run if --run-dir is omitted.
     - Select the best moderate-scenario PPO model per ticker.
     - Convert saved *_predictions_compat.csv files into a market-hours-aligned
       dynamic signal payload for QuantConnect/LEAN Object Store.
@@ -53,6 +53,31 @@ def find_latest_training_run() -> Path:
         )
 
     return summaries[-1].parent
+
+
+def resolve_training_run(run_dir: Path | None) -> Path:
+    """Return requested PPO run directory or newest available run directory."""
+    if run_dir is None:
+        return find_latest_training_run()
+
+    run_dir = run_dir.expanduser()
+
+    if run_dir.is_file():
+        if run_dir.name != "summary_test_mode.csv":
+            raise ValueError(
+                "--run-dir was given as a file, but it must be summary_test_mode.csv. "
+                f"Received: {run_dir}"
+            )
+        return run_dir.parent
+
+    summary_path = run_dir / "summary_test_mode.csv"
+
+    if not summary_path.exists():
+        raise FileNotFoundError(
+            f"summary_test_mode.csv not found in run directory: {run_dir}"
+        )
+
+    return run_dir
 
 
 def market_bar_timestamps(start_date: datetime, count: int) -> list[datetime]:
@@ -312,7 +337,7 @@ def build_payload(
         "selected_models": selected_model_prefixes,
         "selection_metadata": selected_models,
         "selection_rule": (
-            "Best moderate-scenario row by Execution_Edge_vs_BuyHold from "
+            "Best selected-scenario row by Execution_Edge_vs_BuyHold from "
             "execution_realism_analysis.csv"
         ),
         "market_hours_utc": MARKET_HOURS_UTC,
@@ -360,30 +385,46 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Export selected execution-adjusted PPO dynamic signals."
     )
+
+    parser.add_argument(
+        "--run-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Optional PPO run directory containing summary_test_mode.csv, "
+            "execution_realism_analysis.csv, and *_predictions_compat.csv files. "
+            "If omitted, the newest run under reports/backtests is used."
+        ),
+    )
+
     parser.add_argument(
         "--symbols",
         type=str,
         default=",".join(DEFAULT_SYMBOLS),
         help="Comma-separated ticker list. Default: AAPL,PFE,UNH,XOM",
     )
+
     parser.add_argument(
         "--scenario",
         type=str,
         default="moderate",
         help="Execution realism scenario to use. Default: moderate",
     )
+
     parser.add_argument(
         "--rows",
         type=int,
         default=MAX_ROWS_PER_SYMBOL,
         help=f"Rows per symbol to export. Default: {MAX_ROWS_PER_SYMBOL}",
     )
+
     parser.add_argument(
         "--output",
         type=Path,
         default=DEFAULT_OUTPUT_PATH,
         help=f"Output JSON path. Default: {DEFAULT_OUTPUT_PATH}",
     )
+
     return parser.parse_args()
 
 
@@ -399,7 +440,7 @@ def main() -> None:
     if not symbols:
         raise ValueError("No symbols provided.")
 
-    run_dir = find_latest_training_run()
+    run_dir = resolve_training_run(args.run_dir)
     execution = load_execution_realism(run_dir)
 
     selected_models = select_best_models(
