@@ -61,6 +61,29 @@ def find_latest_training_run() -> Path:
 
     return summaries[-1].parent
 
+def resolve_training_run(run_dir: Path | None) -> Path:
+    """Return requested PPO run directory or newest available run directory."""
+    if run_dir is None:
+        return find_latest_training_run()
+
+    run_dir = run_dir.expanduser()
+
+    if run_dir.is_file():
+        if run_dir.name != "summary_test_mode.csv":
+            raise ValueError(
+                "--run-dir was given as a file, but it must be summary_test_mode.csv. "
+                f"Received: {run_dir}"
+            )
+        return run_dir.parent
+
+    summary_path = run_dir / "summary_test_mode.csv"
+
+    if not summary_path.exists():
+        raise FileNotFoundError(
+            f"summary_test_mode.csv not found in run directory: {run_dir}"
+        )
+
+    return run_dir
 
 def load_payload(path: Path) -> dict:
     if not path.exists():
@@ -549,6 +572,16 @@ def parse_args() -> argparse.Namespace:
         help=f"Path to signal payload. Default: {DEFAULT_PAYLOAD_PATH}",
     )
     parser.add_argument(
+        "--run-dir",
+        type=Path,
+        default=None,
+        help=(
+            "PPO run directory containing summary_test_mode.csv and "
+            "*_predictions_compat.csv files. If omitted, the newest run under "
+            "reports/backtests is used."
+        ),
+    )
+    parser.add_argument(
         "--starting-equity",
         type=float,
         default=STARTING_EQUITY,
@@ -569,9 +602,7 @@ def main() -> None:
     payload = load_payload(args.payload)
     selected_models = get_selected_models_from_payload(payload)
     signals = payload_to_dataframe(payload)
-
-    run_dir = find_latest_training_run()
-
+    run_dir = resolve_training_run(args.run_dir)
     returns = load_symbol_returns(
         run_dir=run_dir,
         signals=signals,
