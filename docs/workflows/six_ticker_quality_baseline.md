@@ -509,7 +509,63 @@ The cost sensitivity does not change turnover or trade count because it reuses t
 
 ---
 
+## Weight-Cap Sensitivity Check
+
+A weight-cap sensitivity test was run against the six-ticker quality-filtered dynamic signal payload to evaluate whether the strategy remains viable under more conservative position-sizing assumptions.
+
+The standard payload uses the exported target weights directly. In this baseline, the effective maximum absolute target weight is approximately 25% per active symbol.
+
+A simulator-level override was added:
+
+```bash
+--max-abs-weight
+```
+
+This allows the same dynamic signal payload to be tested under lower exposure caps without regenerating the signal file.
+
+Example commands:
+
+```bash
+python -m src.simulate_dynamic_signal_execution \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --payload quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json \
+  --cost-bps 5 \
+  --max-abs-weight 0.25
+
+python -m src.simulate_dynamic_signal_execution \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --payload quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json \
+  --cost-bps 5 \
+  --max-abs-weight 0.15
+
+python -m src.simulate_dynamic_signal_execution \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --payload quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json \
+  --cost-bps 5 \
+  --max-abs-weight 0.10
+
+python -m src.simulate_dynamic_signal_execution \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --payload quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json \
+  --cost-bps 5
+```
+
+The final command restores the standard payload-weight baseline output after the sensitivity runs.
+
+| Weight assumption | Final equity | Net return | Sharpe estimate | Max drawdown | Transaction costs | Total turnover | Trade events |
+| ----------------- | -----------: | ---------: | --------------: | -----------: | ----------------: | -------------: | -----------: |
+| Payload weights   |   112,982.27 |     12.98% |          3.8048 |        8.96% |          2,000.96 |        36.8929 |          198 |
+| 25% cap           |   112,982.27 |     12.98% |          3.8048 |        8.96% |          2,000.96 |        36.8929 |          198 |
+| 15% cap           |   107,741.96 |      7.74% |          3.8242 |        5.44% |          1,203.65 |        22.8964 |          165 |
+| 10% cap           |   105,106.90 |      5.11% |          3.8082 |        3.65% |            796.17 |        15.4000 |          149 |
+
+Interpretation: reducing the maximum absolute position size lowers net return, turnover, transaction costs, and drawdown. However, the Sharpe estimate remains stable around 3.8 across the 25%, 15%, and 10% cap tests. This suggests that the signal quality is not solely dependent on aggressive sizing; the strategy remains risk-adjusted positive under more conservative exposure assumptions.
+
+The 15% and 10% caps are not proposed replacements for the primary baseline at this stage. They are sensitivity checks showing how the same signal payload behaves when position sizing is reduced.
+
 ## Known Limitations
+
+---
 
 The six-ticker baseline is based on local mark-to-market simulation, not a full broker-accurate fill simulator.
 
