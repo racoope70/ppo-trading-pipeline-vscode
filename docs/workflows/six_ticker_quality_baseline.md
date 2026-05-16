@@ -353,8 +353,3 @@ python -m src.select_quality_tickers \
 ```
 
 Under this stricter screen, PFE is excluded because its moderate-scenario `Sharpe_Est` is negative. This variant is useful for sensitivity analysis, but the documented six-ticker baseline uses the execution-edge rule above.
-
-```
-
-This reads more senior because it is precise, procedural, and avoids conversational phrasing like “exactly what we expected.” It also explains why PFE can be included in the baseline despite negative Sharpe: the baseline rule is based on execution edge, while `--min-sharpe 0` is a stricter research screen.
-```
