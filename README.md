@@ -1,3 +1,7 @@
+## Workflows
+
+- [Six-Ticker Quality Baseline](docs/workflows/six_ticker_quality_baseline.md)
+
 # PPO Walk-Forward Trading Pipeline
 
 This repository contains a modular VS Code implementation of a PPO-based trading research and deployment-preparation pipeline.
