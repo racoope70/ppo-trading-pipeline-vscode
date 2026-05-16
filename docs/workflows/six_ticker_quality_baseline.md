@@ -2,11 +2,11 @@
 
 ## Objective
 
-This workflow documents the reproducible validation path for the current six-ticker PPO quality baseline.
+This document defines the reproducible validation path for the six-ticker PPO quality baseline.
 
-The purpose is to preserve the exact command sequence used to regenerate the selected data set, training artifacts, execution-realism diagnostics, LEAN-compatible signal payload, local mark-to-market simulation, and validation comparison summary.
+The purpose is to preserve the exact command sequence used to regenerate the selected data set, training artifacts, execution-realism diagnostics, LEAN-compatible signal payload, payload manifest, local mark-to-market simulation, and validation comparison summary.
 
-This workflow avoids manual edits to `src/config.py` by using CLI overrides.
+The workflow avoids manual edits to `src/config.py` by using explicit CLI overrides. This keeps the research process auditable and reduces the risk of comparing artifacts from inconsistent ticker universes or run directories.
 
 ---
 
@@ -16,7 +16,7 @@ Current baseline universe:
 
 ```text
 AAPL, PFE, UNH, XOM, AMD, MRK
-````
+```
 
 The six-ticker set was selected after comparing the four-ticker and eight-ticker dynamic signal simulations.
 
@@ -26,7 +26,7 @@ Excluded from the eight-ticker expansion:
 META, ORCL
 ```
 
-Rationale: META and ORCL did not pass the moderate execution-realism filter. Their best moderate-scenario result favored Buy & Hold over PPO, so they were excluded from the quality-filtered set.
+Rationale: META and ORCL did not pass the moderate execution-realism filter. Their best moderate-scenario result favored Buy & Hold over PPO, so they were excluded from the quality-filtered baseline.
 
 ---
 
@@ -56,7 +56,7 @@ Comparison across validation sets:
 | Eight-ticker selected local MTM       |   107,686.02 |      7.69% |            2.03 |       10.19% |          547 |
 | Six-ticker quality-filtered local MTM |   112,982.27 |     12.98% |            3.80 |        8.96% |          198 |
 
-Current conclusion: the six-ticker quality-filtered set is the primary local validation baseline.
+Conclusion: the six-ticker quality-filtered simulation is the primary local validation baseline.
 
 ---
 
@@ -181,7 +181,7 @@ Expected excluded symbols:
 META, ORCL
 ```
 
-This reproduces the six-ticker quality baseline used for the current validation workflow.
+This reproduces the six-ticker quality baseline used for the validation workflow.
 
 A stricter research screen can also be run by requiring non-negative estimated Sharpe:
 
@@ -236,7 +236,7 @@ The manifest records the source run directory, selected models, payload path, SH
 
 ---
 
-### 7. Verify payload structure and manifest
+### 7. Verify payload structure and manifest metadata
 
 ```bash
 python - <<'PY'
@@ -272,9 +272,37 @@ signal_rows: 1500
 manifest_artifact_type: dynamic_signal_payload_manifest
 ```
 
+This check confirms that the exported payload and manifest are structurally present and internally readable.
+
 ---
 
-### 8. Run local mark-to-market dynamic signal simulation
+### 8. Validate payload manifest
+
+After exporting the payload and manifest, verify that the payload still matches the manifest record.
+
+```bash
+python -m src.validate_payload_manifest \
+  --manifest quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.manifest.json
+```
+
+Expected checks:
+
+```text
+payload_exists: PASS
+sha256_match: PASS
+symbols_match: PASS
+selected_models_match: PASS
+rows_per_symbol_match: PASS
+signal_rows_match: PASS
+first_timestamp_match: PASS
+last_timestamp_match: PASS
+```
+
+This closes the audit loop for the exported signal payload. The exporter writes the manifest, and the validator confirms that the payload file still matches the saved reproducibility record.
+
+---
+
+### 9. Run local mark-to-market dynamic signal simulation
 
 ```bash
 python -m src.simulate_dynamic_signal_execution \
@@ -299,7 +327,7 @@ reports/dynamic_signal_execution/selected_dynamic_signals_6ticker_quality_250mar
 
 ---
 
-### 9. Regenerate validation comparison summary
+### 10. Regenerate validation comparison summary
 
 ```bash
 python -m src.summarize_selected_dynamic_validation \
@@ -312,7 +340,24 @@ Expected output:
 reports/validation_summary/selected_dynamic_validation_comparison.csv
 ```
 
-The comparison should identify the six-ticker quality-filtered simulation as the current primary baseline.
+The comparison should identify the six-ticker quality-filtered simulation as the primary baseline.
+
+---
+
+### 11. Run final lightweight test suite
+
+```bash
+python -m pytest tests -q
+git log --oneline -6
+```
+
+Expected:
+
+```text
+26 passed
+```
+
+The documentation update does not affect baseline metrics.
 
 ---
 
@@ -377,42 +422,6 @@ Trade_Events and Total_Turnover remain controlled
 
 ---
 
-## Known Limitations
-
-The six-ticker baseline is based on local mark-to-market simulation, not a full broker-accurate fill simulator.
-
-QuantConnect validation has been used primarily for Object Store ingestion, timestamp alignment, and order-path validation. Longer-window performance evaluation remains more reliable in the local/VS Code simulation environment until the QuantConnect data availability limitation is resolved.
-
-The documented six-ticker baseline uses a combined run folder:
-
-```text
-reports/backtests/ppo_walkforward_results_20260512_8ticker_combined
-```
-
-This combined folder was used to consolidate the original four selected tickers with the later AMD/MRK/META/ORCL expansion. Future runs should prefer a single run directory generated from the full intended ticker universe.
-
----
-
-## Version-Control Notes
-
-Do not commit regenerated report files unless intentionally adding ignored artifacts.
-
-If a payload JSON changes only because `generated_utc` was refreshed, restore it unless the payload itself is intentionally being updated:
-
-```bash
-git restore quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json
-```
-
-If the payload and manifest are intentionally updated together, commit both so the manifest hash matches the payload content.
-
-Commit workflow documentation changes with:
-
-```bash
-git add docs/workflows/six_ticker_quality_baseline.md
-git commit -m "Document validation orchestrator and payload manifest"
-git pull --rebase origin main
-git push
-```
 ## Five-Ticker Sharpe-Filtered Sensitivity Check
 
 A stricter sensitivity test was run using the non-negative Sharpe filter:
@@ -447,3 +456,44 @@ The five-ticker Sharpe-filtered payload was exported and simulated locally again
 Interpretation: excluding PFE did not change the local mark-to-market result because PFE generated only `HOLD` signals in the exported six-ticker dynamic payload. Therefore, PFE contributed no active exposure, turnover, or PnL in the local MTM simulation.
 
 The five-ticker payload was not committed because it is redundant with the documented six-ticker baseline under the current signal thresholding and execution simulator.
+
+---
+
+## Known Limitations
+
+The six-ticker baseline is based on local mark-to-market simulation, not a full broker-accurate fill simulator.
+
+QuantConnect validation has been used primarily for Object Store ingestion, timestamp alignment, payload compatibility, and order-path validation. Longer-window performance evaluation remains more reliable in the local/VS Code simulation environment until the QuantConnect data-availability limitation is resolved.
+
+The documented six-ticker baseline uses a combined run folder:
+
+```text
+reports/backtests/ppo_walkforward_results_20260512_8ticker_combined
+```
+
+This combined folder was used to consolidate the original four selected tickers with the later AMD/MRK/META/ORCL expansion. Future runs should prefer a single run directory generated from the full intended ticker universe.
+
+---
+
+## Version-Control Notes
+
+Do not commit regenerated report files unless intentionally adding ignored artifacts.
+
+If a payload JSON changes only because `generated_utc` was refreshed, restore it unless the payload itself is intentionally being updated:
+
+```bash
+git restore quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json
+```
+
+If the payload and manifest are intentionally updated together, commit both so the manifest hash matches the payload content.
+
+Commit workflow documentation changes with:
+
+```bash
+git status --short
+git add docs/workflows/six_ticker_quality_baseline.md
+git commit -m "Document payload manifest validation workflow"
+git pull --rebase origin main
+git push
+git status --short
+```
