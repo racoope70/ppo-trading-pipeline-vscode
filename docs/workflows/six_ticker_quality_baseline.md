@@ -1,7 +1,3 @@
-## Workflows
-
-- [Six-Ticker Quality Baseline](docs/workflows/six_ticker_quality_baseline.md)
-
 # Six-Ticker Quality Baseline Workflow
 
 ## Objective
@@ -20,7 +16,7 @@ Current baseline universe:
 
 ```text
 AAPL, PFE, UNH, XOM, AMD, MRK
-```
+````
 
 The six-ticker set was selected after comparing the four-ticker and eight-ticker dynamic signal simulations.
 
@@ -155,7 +151,53 @@ reports/backtests/ppo_walkforward_results_20260512_8ticker_combined
 
 ---
 
-### 5. Export selected dynamic LEAN signal payload
+### 5. Select quality-filtered tickers
+
+After execution-realism analysis is complete, run the quality selector to choose the qualifying PPO model per ticker under the documented baseline rule.
+
+```bash
+python -m src.select_quality_tickers \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --scenario moderate \
+  --output-dir reports/validation_summary
+```
+
+Default inclusion rule:
+
+```text
+Execution_Winner == PPO
+Execution_Edge_vs_BuyHold > 0
+```
+
+Expected selected symbols:
+
+```text
+AAPL, AMD, MRK, PFE, UNH, XOM
+```
+
+Expected excluded symbols:
+
+```text
+META, ORCL
+```
+
+This reproduces the six-ticker quality baseline used for the current validation workflow.
+
+A stricter research screen can also be run by requiring non-negative estimated Sharpe:
+
+```bash
+python -m src.select_quality_tickers \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --scenario moderate \
+  --min-sharpe 0 \
+  --output-dir reports/validation_summary
+```
+
+Under this stricter screen, PFE is excluded because its moderate-scenario `Sharpe_Est` is negative. This variant is useful for sensitivity analysis, but the documented six-ticker baseline uses the execution-edge rule above.
+
+---
+
+### 6. Export selected dynamic LEAN signal payload
 
 ```bash
 python -m src.export_selected_dynamic_lean_signals \
@@ -184,19 +226,31 @@ AMD     ppo_AMD_window3
 MRK     ppo_MRK_window1
 ```
 
+The exporter also writes a sidecar reproducibility manifest:
+
+```text
+quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.manifest.json
+```
+
+The manifest records the source run directory, selected models, payload path, SHA256 hash, symbol list, row count, timestamp range, export configuration, and required source files.
+
 ---
 
-### 6. Verify payload structure
+### 7. Verify payload structure and manifest
 
 ```bash
 python - <<'PY'
 import json
 from pathlib import Path
 
-path = Path("quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json")
+payload_path = Path("quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json")
+manifest_path = Path("quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.manifest.json")
 
-with path.open() as f:
+with payload_path.open() as f:
     payload = json.load(f)
+
+with manifest_path.open() as f:
+    manifest = json.load(f)
 
 print("symbols:", payload["symbols"])
 print("rows_per_symbol:", payload["rows_per_symbol"])
@@ -204,6 +258,8 @@ print("signal_rows:", len(payload["signals"]))
 print("selected_models:", payload["selected_models"])
 print("first_signal:", payload["signals"][0])
 print("last_signal:", payload["signals"][-1])
+print("manifest_artifact_type:", manifest["artifact_type"])
+print("manifest_payload_sha256:", manifest["payload_sha256"][:16] + "...")
 PY
 ```
 
@@ -213,14 +269,16 @@ Expected:
 symbols: ['AAPL', 'PFE', 'UNH', 'XOM', 'AMD', 'MRK']
 rows_per_symbol: 250
 signal_rows: 1500
+manifest_artifact_type: dynamic_signal_payload_manifest
 ```
 
 ---
 
-### 7. Run local mark-to-market dynamic signal simulation
+### 8. Run local mark-to-market dynamic signal simulation
 
 ```bash
 python -m src.simulate_dynamic_signal_execution \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
   --payload quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json
 ```
 
@@ -241,7 +299,7 @@ reports/dynamic_signal_execution/selected_dynamic_signals_6ticker_quality_250mar
 
 ---
 
-### 8. Regenerate validation comparison summary
+### 9. Regenerate validation comparison summary
 
 ```bash
 python -m src.summarize_selected_dynamic_validation \
@@ -255,6 +313,46 @@ reports/validation_summary/selected_dynamic_validation_comparison.csv
 ```
 
 The comparison should identify the six-ticker quality-filtered simulation as the current primary baseline.
+
+---
+
+## Orchestrated Validation Chain
+
+The validation workflow can also be run through the orchestration wrapper:
+
+```bash
+python -m src.run_validation_chain \
+  --tickers AAPL PFE UNH XOM AMD MRK \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --payload quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json \
+  --dry-run
+```
+
+The dry run prints the full command sequence without executing it.
+
+For the current baseline, where data preparation, model training, and execution-realism analysis already exist, use:
+
+```bash
+python -m src.run_validation_chain \
+  --tickers AAPL PFE UNH XOM AMD MRK \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --payload quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json \
+  --skip-data \
+  --skip-train \
+  --skip-execution-realism
+```
+
+This runs the downstream validation chain:
+
+```text
+quality selector
+dynamic signal export
+payload manifest generation
+local mark-to-market simulation
+validation comparison summary
+```
+
+The orchestrator does not replace the underlying scripts. It standardizes the sequence and arguments used to run them.
 
 ---
 
@@ -305,55 +403,13 @@ If a payload JSON changes only because `generated_utc` was refreshed, restore it
 git restore quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json
 ```
 
+If the payload and manifest are intentionally updated together, commit both so the manifest hash matches the payload content.
+
 Commit workflow documentation changes with:
 
 ```bash
 git add docs/workflows/six_ticker_quality_baseline.md
-git commit -m "Document six ticker quality baseline workflow"
+git commit -m "Document validation orchestrator and payload manifest"
 git pull --rebase origin main
 git push
 ```
-
-## Quality-Filtered Ticker Selection
-
-After the execution-realism analysis is complete, run the quality selector to choose the qualifying PPO model per ticker under the documented baseline rule.
-
-```bash
-python -m src.select_quality_tickers \
-  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
-  --scenario moderate \
-  --output-dir reports/validation_summary
-````
-
-Default inclusion rule:
-
-```text
-Execution_Winner == PPO
-Execution_Edge_vs_BuyHold > 0
-```
-
-Expected selected symbols:
-
-```text
-AAPL, AMD, MRK, PFE, UNH, XOM
-```
-
-Expected excluded symbols:
-
-```text
-META, ORCL
-```
-
-This reproduces the six-ticker quality baseline used for the current validation workflow.
-
-A stricter research screen can also be run by requiring non-negative estimated Sharpe:
-
-```bash
-python -m src.select_quality_tickers \
-  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
-  --scenario moderate \
-  --min-sharpe 0 \
-  --output-dir reports/validation_summary
-```
-
-Under this stricter screen, PFE is excluded because its moderate-scenario `Sharpe_Est` is negative. This variant is useful for sensitivity analysis, but the documented six-ticker baseline uses the execution-edge rule above.
