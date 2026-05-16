@@ -309,3 +309,52 @@ git commit -m "Document six ticker quality baseline workflow"
 git pull --rebase origin main
 git push
 ```
+
+## Quality-Filtered Ticker Selection
+
+After the execution-realism analysis is complete, run the quality selector to choose the qualifying PPO model per ticker under the documented baseline rule.
+
+```bash
+python -m src.select_quality_tickers \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --scenario moderate \
+  --output-dir reports/validation_summary
+````
+
+Default inclusion rule:
+
+```text
+Execution_Winner == PPO
+Execution_Edge_vs_BuyHold > 0
+```
+
+Expected selected symbols:
+
+```text
+AAPL, AMD, MRK, PFE, UNH, XOM
+```
+
+Expected excluded symbols:
+
+```text
+META, ORCL
+```
+
+This reproduces the six-ticker quality baseline used for the current validation workflow.
+
+A stricter research screen can also be run by requiring non-negative estimated Sharpe:
+
+```bash
+python -m src.select_quality_tickers \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --scenario moderate \
+  --min-sharpe 0 \
+  --output-dir reports/validation_summary
+```
+
+Under this stricter screen, PFE is excluded because its moderate-scenario `Sharpe_Est` is negative. This variant is useful for sensitivity analysis, but the documented six-ticker baseline uses the execution-edge rule above.
+
+```
+
+This reads more senior because it is precise, procedural, and avoids conversational phrasing like “exactly what we expected.” It also explains why PFE can be included in the baseline despite negative Sharpe: the baseline rule is based on execution edge, while `--min-sharpe 0` is a stricter research screen.
+```
