@@ -1,0 +1,51 @@
+{
+  "producer": "ppo_research_pipeline",
+  "artifact_type": "dynamic_signal_payload_manifest",
+  "created_utc": "2026-05-16T02:08:28.898470+00:00",
+  "source_run_dir": "reports/backtests/ppo_walkforward_results_20260512_8ticker_combined",
+  "payload_path": "quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json",
+  "payload_sha256": "e21ffa57ed9e8e8c0d2741dcd704ad83007e44e6f6352425d1a708712cadcc98",
+  "scenario": "moderate",
+  "symbols": [
+    "AAPL",
+    "PFE",
+    "UNH",
+    "XOM",
+    "AMD",
+    "MRK"
+  ],
+  "selected_models": {
+    "AAPL": "ppo_AAPL_window1",
+    "PFE": "ppo_PFE_window1",
+    "UNH": "ppo_UNH_window1",
+    "XOM": "ppo_XOM_window2",
+    "AMD": "ppo_AMD_window3",
+    "MRK": "ppo_MRK_window1"
+  },
+  "selection_rule": "Best selected-scenario row by Execution_Edge_vs_BuyHold from execution_realism_analysis.csv",
+  "rows_per_symbol": 250,
+  "signal_rows": 1500,
+  "first_timestamp": "2026-02-10T10:00:00+00:00",
+  "last_timestamp": "2026-03-31T14:00:00+00:00",
+  "market_hours_utc": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+  ],
+  "max_abs_weight": 0.25,
+  "min_confidence": 0.1,
+  "export_config": {
+    "interval": "1h_market_bars",
+    "rows_per_symbol": 250,
+    "scenario": "moderate"
+  },
+  "required_source_files": [
+    "summary_test_mode.csv",
+    "execution_realism_analysis.csv",
+    "*_predictions_compat.csv"
+  ]
+}

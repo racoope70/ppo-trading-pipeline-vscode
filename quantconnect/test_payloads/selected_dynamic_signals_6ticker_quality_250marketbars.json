@@ -2,7 +2,7 @@
   "producer": "ppo_research_pipeline",
   "description": "Precomputed market-hours dynamic PPO signals for selected execution-adjusted ticker set",
   "interval": "1h_market_bars",
-  "generated_utc": "2026-05-13T16:04:31.534024+00:00",
+  "generated_utc": "2026-05-16T02:08:28.819774+00:00",
   "symbols": [
     "AAPL",
     "PFE",
@@ -87,7 +87,7 @@
       "max_drawdown_pct": 4.761923681066483
     }
   },
-  "selection_rule": "Best moderate-scenario row by Execution_Edge_vs_BuyHold from execution_realism_analysis.csv",
+  "selection_rule": "Best selected-scenario row by Execution_Edge_vs_BuyHold from execution_realism_analysis.csv",
   "market_hours_utc": [
     10,
     11,

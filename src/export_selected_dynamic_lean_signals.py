@@ -20,6 +20,7 @@ Notes:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -356,8 +357,78 @@ def save_payload(payload: dict, output_path: Path) -> None:
     with output_path.open("w") as file:
         json.dump(payload, file, indent=2)
 
+def sha256_file(path: Path) -> str:
+    """Return SHA256 hash for a file."""
+    digest = hashlib.sha256()
 
-def print_summary(payload: dict, output_path: Path, run_dir: Path) -> None:
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+
+    return digest.hexdigest()
+
+
+def build_manifest(
+    payload: dict,
+    output_path: Path,
+    run_dir: Path,
+    scenario: str,
+    payload_sha256: str,
+) -> dict:
+    """Build a reproducibility manifest for an exported signal payload."""
+    signals = pd.DataFrame(payload["signals"])
+
+    manifest = {
+        "producer": "ppo_research_pipeline",
+        "artifact_type": "dynamic_signal_payload_manifest",
+        "created_utc": datetime.now(timezone.utc).isoformat(),
+        "source_run_dir": str(run_dir),
+        "payload_path": str(output_path),
+        "payload_sha256": payload_sha256,
+        "scenario": scenario,
+        "symbols": payload.get("symbols", []),
+        "selected_models": payload.get("selected_models", {}),
+        "selection_rule": payload.get("selection_rule"),
+        "rows_per_symbol": payload.get("rows_per_symbol"),
+        "signal_rows": int(len(signals)),
+        "first_timestamp": str(signals["timestamp"].min()) if not signals.empty else None,
+        "last_timestamp": str(signals["timestamp"].max()) if not signals.empty else None,
+        "market_hours_utc": payload.get("market_hours_utc", []),
+        "max_abs_weight": payload.get("max_abs_weight"),
+        "min_confidence": payload.get("min_confidence"),
+        "export_config": {
+            "interval": payload.get("interval"),
+            "rows_per_symbol": payload.get("rows_per_symbol"),
+            "scenario": scenario,
+        },
+        "required_source_files": [
+            "summary_test_mode.csv",
+            "execution_realism_analysis.csv",
+            "*_predictions_compat.csv",
+        ],
+    }
+
+    return manifest
+
+
+def manifest_path_for_payload(output_path: Path) -> Path:
+    """Return sidecar manifest path for an exported payload."""
+    return output_path.with_suffix(".manifest.json")
+
+
+def save_manifest(manifest: dict, manifest_path: Path) -> None:
+    """Save payload manifest JSON."""
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with manifest_path.open("w") as file:
+        json.dump(manifest, file, indent=2)
+
+def print_summary(
+    payload: dict,
+    output_path: Path,
+    run_dir: Path,
+    manifest_path: Path | None = None,
+) -> None:
     signals = pd.DataFrame(payload["signals"])
 
     print("=" * 80)
@@ -365,6 +436,8 @@ def print_summary(payload: dict, output_path: Path, run_dir: Path) -> None:
     print("=" * 80)
     print("Using training run:", run_dir)
     print("Saved dynamic LEAN signals to:", output_path)
+    if manifest_path is not None:
+        print("Saved payload manifest to:", manifest_path)
     print("Symbols:", payload["symbols"])
     print("Selected models:", payload["selected_models"])
     print("Signal rows:", len(signals))
@@ -456,7 +529,19 @@ def main() -> None:
     )
 
     save_payload(payload, args.output)
-    print_summary(payload, args.output, run_dir)
+
+    payload_sha256 = sha256_file(args.output)
+    manifest_path = manifest_path_for_payload(args.output)
+    manifest = build_manifest(
+        payload=payload,
+        output_path=args.output,
+        run_dir=run_dir,
+        scenario=args.scenario,
+        payload_sha256=payload_sha256,
+    )
+    save_manifest(manifest, manifest_path)
+
+    print_summary(payload, args.output, run_dir, manifest_path)
 
 
 if __name__ == "__main__":
