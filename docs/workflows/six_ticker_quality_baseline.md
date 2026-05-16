@@ -459,6 +459,56 @@ The five-ticker payload was not committed because it is redundant with the docum
 
 ---
 
+## Transaction-Cost Sensitivity Check
+
+A transaction-cost sensitivity test was run against the six-ticker quality-filtered dynamic signal payload to evaluate whether the baseline remains viable under higher execution-cost assumptions.
+
+The baseline local mark-to-market simulation uses:
+
+```text
+Cost bps: 5.00
+```
+
+Additional simulations were run at:
+
+```text
+10 bps
+15 bps
+```
+
+Commands:
+
+```bash
+python -m src.simulate_dynamic_signal_execution \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --payload quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json \
+  --cost-bps 10
+
+python -m src.simulate_dynamic_signal_execution \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --payload quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json \
+  --cost-bps 15
+
+python -m src.simulate_dynamic_signal_execution \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --payload quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json \
+  --cost-bps 5
+```
+
+The final `--cost-bps 5` run restores the standard baseline output file after the higher-cost sensitivity runs.
+
+| Cost assumption | Final equity | Net return | Sharpe estimate | Max drawdown | Transaction costs | Total turnover | Trade events |
+| --------------: | -----------: | ---------: | --------------: | -----------: | ----------------: | -------------: | -----------: |
+|           5 bps |   112,982.27 |     12.98% |          3.8048 |        8.96% |          2,000.96 |        36.8929 |          198 |
+|          10 bps |   110,916.76 |     10.92% |          3.2663 |        9.17% |          3,965.18 |        36.8929 |          198 |
+|          15 bps |   108,888.68 |      8.89% |          2.7275 |        9.38% |          5,893.32 |        36.8929 |          198 |
+
+Interpretation: the strategy degrades as transaction costs rise, as expected, but remains positive under the tested 10 bps and 15 bps assumptions. The 15 bps stress case still produced an 8.89% net return and a 2.73 Sharpe estimate in the local mark-to-market simulation.
+
+The cost sensitivity does not change turnover or trade count because it reuses the same dynamic signal payload and only changes the transaction-cost assumption.
+
+---
+
 ## Known Limitations
 
 The six-ticker baseline is based on local mark-to-market simulation, not a full broker-accurate fill simulator.
