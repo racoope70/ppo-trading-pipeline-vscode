@@ -30,7 +30,7 @@ A workflow document was also added:
 
 ```text
 docs/workflows/six_ticker_quality_baseline.md
-```
+````
 
 The README now links to that workflow.
 
@@ -65,6 +65,90 @@ python -m src.simulate_dynamic_signal_execution \
 python -m src.summarize_selected_dynamic_validation \
   --output-dir reports/validation_summary
 ```
+
+## Subsequent Automation Additions
+
+After the initial CLI reproducibility pass, additional automation controls were added to improve auditability and repeatability.
+
+### Validation Chain Orchestrator
+
+A thin orchestration wrapper was added:
+
+```text
+src/run_validation_chain.py
+```
+
+The orchestrator prints and runs the validation sequence using the same CLI-controlled scripts documented in the workflow. It supports `--dry-run` for command inspection and skip flags for already-completed phases.
+
+Example dry run:
+
+```bash
+python -m src.run_validation_chain \
+  --tickers AAPL PFE UNH XOM AMD MRK \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --payload quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json \
+  --dry-run
+```
+
+For the current six-ticker baseline, the practical downstream-only run is:
+
+```bash
+python -m src.run_validation_chain \
+  --tickers AAPL PFE UNH XOM AMD MRK \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --payload quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.json \
+  --skip-data \
+  --skip-train \
+  --skip-execution-realism
+```
+
+### Payload Reproducibility Manifest
+
+The selected dynamic signal exporter now writes a sidecar manifest next to the exported payload.
+
+Current manifest path:
+
+```text
+quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.manifest.json
+```
+
+The manifest records:
+
+```text
+source run directory
+payload path
+payload SHA256 hash
+selected symbols
+selected model prefixes
+scenario
+rows per symbol
+signal row count
+first and last timestamp
+export configuration
+required source files
+```
+
+This makes exported signal payloads auditable and provides a content hash for detecting accidental payload changes.
+
+### Lightweight Tests and CI
+
+Lightweight pytest coverage was added for the reproducibility layer:
+
+```text
+tests/test_cli_utils.py
+tests/test_run_dir_resolution.py
+tests/test_quality_selector.py
+```
+
+These tests cover ticker parsing, run-directory resolution, and quality-filter selection logic.
+
+A GitHub Actions workflow was also added:
+
+```text
+.github/workflows/tests.yml
+```
+
+The workflow runs the lightweight pytest suite on pushes and pull requests targeting `main`.
 
 ## Quality-Filtered Baseline
 
@@ -111,18 +195,18 @@ Under this stricter filter, PFE is excluded because its moderate-scenario `Sharp
 
 The six-ticker local mark-to-market simulation is the current primary validation baseline:
 
-| Metric | Value |
-|---|---:|
-| Final equity | 112,982.27 |
-| Net PnL | 12,982.27 |
-| Net return | 12.98% |
-| Gross PnL before costs | 14,983.23 |
-| Transaction costs | 2,000.96 |
-| Sharpe estimate | 3.80 |
-| Max drawdown | 8.96% |
-| Total turnover | 36.8929 |
-| Trade events | 198 |
-| Simulation rows | 250 |
+| Metric                 |      Value |
+| ---------------------- | ---------: |
+| Final equity           | 112,982.27 |
+| Net PnL                |  12,982.27 |
+| Net return             |     12.98% |
+| Gross PnL before costs |  14,983.23 |
+| Transaction costs      |   2,000.96 |
+| Sharpe estimate        |       3.80 |
+| Max drawdown           |      8.96% |
+| Total turnover         |    36.8929 |
+| Trade events           |        198 |
+| Simulation rows        |        250 |
 
 ## Interpretation
 
@@ -166,8 +250,8 @@ Future ticker additions should pass the quality selector before inclusion.
 
 ## Next Recommended Work
 
-1. Add a single orchestration command or script that runs the full validation chain.
-2. Add a reproducibility manifest for each exported signal payload.
-3. Add lightweight tests for ticker parsing, run-directory resolution, and quality filtering.
+1. Add a single command preset for the documented six-ticker baseline.
+2. Add manifest validation that compares the saved SHA256 hash against the current payload file.
+3. Add lightweight tests for manifest generation and validation-chain command construction.
 4. Revisit stricter quality rules after more local validation runs.
 5. Use QuantConnect only for execution-path validation until data availability is resolved.
