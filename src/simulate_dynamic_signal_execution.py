@@ -325,6 +325,7 @@ def simulate_execution(
     returns: pd.DataFrame,
     starting_equity: float = STARTING_EQUITY,
     total_cost_bps: float = TOTAL_COST_BPS,
+    max_abs_weight: float | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Simulate mark-to-market returns, target changes, and cost drag.
 
@@ -408,7 +409,14 @@ def simulate_execution(
         for _, row in signal_group.iterrows():
             symbol = str(row["symbol"])
             previous_weight = float(current_weights.get(symbol, 0.0))
-            target_weight = float(row["target_weight"])
+            raw_target_weight = float(row["target_weight"])
+            if max_abs_weight is not None:
+                target_weight = max(
+                    -float(max_abs_weight),
+                    min(float(max_abs_weight), raw_target_weight),
+                )
+            else:
+                target_weight = raw_target_weight
 
             weight_change = target_weight - previous_weight
             abs_weight_change = abs(weight_change)
@@ -429,6 +437,8 @@ def simulate_execution(
                         "confidence": float(row["confidence"]),
                         "previous_weight": previous_weight,
                         "target_weight": target_weight,
+                        "raw_target_weight": raw_target_weight,
+                        "max_abs_weight": max_abs_weight,
                         "weight_change": weight_change,
                         "abs_weight_change": abs_weight_change,
                         "symbol_return": float(symbol_returns.get(symbol, 0.0)),
@@ -593,8 +603,17 @@ def parse_args() -> argparse.Namespace:
         default=TOTAL_COST_BPS,
         help="Total transaction cost in basis points applied to notional traded.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--max-abs-weight",
+        type=float,
+        default=None,
+        help=(
+            "Optional absolute target-weight cap applied during simulation. "
+            "Example: 0.15 caps weights to +/-15%%. If omitted, payload weights are used."
+        ),
+    )
 
+    return parser.parse_args()
 
 def main() -> None:
     args = parse_args()
@@ -628,6 +647,7 @@ def main() -> None:
         returns=returns,
         starting_equity=args.starting_equity,
         total_cost_bps=args.cost_bps,
+        max_abs_weight=args.max_abs_weight,
     )
 
     summary = summarize_results(
@@ -643,6 +663,10 @@ def main() -> None:
     print(f"Return rows: {len(returns)}")
     print(f"Starting equity: {args.starting_equity:,.2f}")
     print(f"Cost bps: {args.cost_bps:.2f}")
+    if args.max_abs_weight is not None:
+        print(f"Max abs weight override: {args.max_abs_weight:.4f}")
+    else:
+        print("Max abs weight override: None; using payload target weights")
 
     print_header("SUMMARY")
     print(summary.to_string(index=False))
