@@ -30,7 +30,7 @@ A workflow document was also added:
 
 ```text
 docs/workflows/six_ticker_quality_baseline.md
-````
+```
 
 The README now links to that workflow.
 
@@ -129,6 +129,72 @@ required source files
 ```
 
 This makes exported signal payloads auditable and provides a content hash for detecting accidental payload changes.
+
+### Payload Manifest Validation
+
+A manifest validator was added to verify that an exported dynamic signal payload still matches its recorded reproducibility metadata.
+
+Validator script:
+
+```text
+src/validate_payload_manifest.py
+```
+
+Example validation command:
+
+```bash
+python -m src.validate_payload_manifest \
+  --manifest quantconnect/test_payloads/selected_dynamic_signals_6ticker_quality_250marketbars.manifest.json
+```
+
+The validator checks:
+
+```text
+payload file exists
+payload SHA256 matches the manifest
+symbols match
+selected model prefixes match
+rows per symbol match
+signal row count matches
+first timestamp matches
+last timestamp matches
+```
+
+This closes the audit loop for exported signal payloads: the exporter writes the manifest, and the validator confirms that the payload still matches the saved manifest record.
+
+Lightweight tests were also added for the validator:
+
+```text
+tests/test_validate_payload_manifest.py
+```
+
+After this addition, the local pytest suite increased from 23 tests to 26 tests.
+
+Then commit:
+
+```bash
+git status --short
+git add docs/runs/2026-05-13_reproducibility_cli_improvements.md
+git commit -m "Document payload manifest validation"
+git pull --rebase origin main
+git push
+git status --short
+```
+
+Then final test:
+
+```bash
+python -m pytest tests -q
+git log --oneline -6
+```
+
+Expected:
+
+```text
+26 passed
+```
+
+This is documentation-only and will not change the baseline metrics.
 
 ### Lightweight Tests and CI
 
