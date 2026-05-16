@@ -1,3 +1,7 @@
+## Workflows
+
+- [Six-Ticker Quality Baseline](docs/workflows/six_ticker_quality_baseline.md)
+
 # Six-Ticker Quality Baseline Workflow
 
 ## Objective
