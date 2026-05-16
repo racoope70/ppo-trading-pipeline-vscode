@@ -8,8 +8,9 @@ Purpose:
     3. analyze_execution_realism.py
     4. select_quality_tickers.py
     5. export_selected_dynamic_lean_signals.py
-    6. simulate_dynamic_signal_execution.py
-    7. summarize_selected_dynamic_validation.py
+    6. validate_payload_manifest.py
+    7. simulate_dynamic_signal_execution.py
+    8. summarize_selected_dynamic_validation.py
 
 This script is intentionally a thin command runner. It does not replace the
 individual scripts; it standardizes the sequence and arguments used to run them.
@@ -124,6 +125,12 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--skip-manifest-validation",
+        action="store_true",
+        help="Skip payload manifest validation.",
+    )
+
+    parser.add_argument(
         "--skip-simulation",
         action="store_true",
         help="Skip local mark-to-market dynamic signal simulation.",
@@ -160,6 +167,9 @@ def run_command(command: list[str], dry_run: bool = False) -> None:
 
     subprocess.run(command, check=True)
 
+def manifest_path_for_payload(payload_path: Path) -> Path:
+    """Return sidecar manifest path for an exported payload."""
+    return payload_path.with_suffix(".manifest.json")
 
 def build_commands(args: argparse.Namespace) -> list[list[str]]:
     """Build validation-chain commands from CLI arguments."""
@@ -237,6 +247,17 @@ def build_commands(args: argparse.Namespace) -> list[list[str]]:
             ]
         )
 
+    if not args.skip_manifest_validation:
+        commands.append(
+            [
+                sys.executable,
+                "-m",
+                "src.validate_payload_manifest",
+                "--manifest",
+                str(manifest_path_for_payload(args.payload)),
+            ]
+        )
+        
     if not args.skip_simulation:
         commands.append(
             [
