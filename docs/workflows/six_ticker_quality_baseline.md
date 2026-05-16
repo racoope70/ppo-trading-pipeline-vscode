@@ -413,3 +413,37 @@ git commit -m "Document validation orchestrator and payload manifest"
 git pull --rebase origin main
 git push
 ```
+## Five-Ticker Sharpe-Filtered Sensitivity Check
+
+A stricter sensitivity test was run using the non-negative Sharpe filter:
+
+```bash
+python -m src.select_quality_tickers \
+  --run-dir reports/backtests/ppo_walkforward_results_20260512_8ticker_combined \
+  --scenario moderate \
+  --min-sharpe 0 \
+  --output-dir reports/validation_summary
+```
+
+This selected:
+
+```text
+AAPL, AMD, MRK, UNH, XOM
+```
+
+and excluded:
+
+```text
+META, ORCL, PFE
+```
+
+The five-ticker Sharpe-filtered payload was exported and simulated locally against the same run directory. The result was identical to the six-ticker quality-filtered baseline:
+
+| Validation set                        | Final equity | Net return | Sharpe estimate | Max drawdown | Trade events |
+| ------------------------------------- | -----------: | ---------: | --------------: | -----------: | -----------: |
+| Five-ticker Sharpe-filtered local MTM |   112,982.27 |     12.98% |            3.80 |        8.96% |          198 |
+| Six-ticker quality-filtered local MTM |   112,982.27 |     12.98% |            3.80 |        8.96% |          198 |
+
+Interpretation: excluding PFE did not change the local mark-to-market result because PFE generated only `HOLD` signals in the exported six-ticker dynamic payload. Therefore, PFE contributed no active exposure, turnover, or PnL in the local MTM simulation.
+
+The five-ticker payload was not committed because it is redundant with the documented six-ticker baseline under the current signal thresholding and execution simulator.
